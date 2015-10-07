@@ -16,6 +16,7 @@ import javax.naming.CompositeName;
 import javax.naming.Context;
 import javax.naming.Name;
 import javax.naming.NameClassPair;
+import javax.naming.NameNotFoundException;
 import javax.naming.NameParser;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
@@ -73,7 +74,7 @@ public class ApplicationBuilder {
 						public Object lookup(String name) throws NamingException {
 							Object resource = ac.getResource(name);
 							if (resource == null)
-								throw new Error();
+								throw new NameNotFoundException("resource " + name + " not found");
 							return resource;
 						}
 
@@ -246,7 +247,7 @@ public class ApplicationBuilder {
 			try {
 				LogManager.getLogManager()
 						.readConfiguration(new ByteArrayInputStream(
-								"handlers = java.util.logging.ConsoleHandler\r\njava.util.logging.ConsoleHandler.level = ALL\r\n.level = WARNING\r\n"
+								"handlers = java.util.logging.ConsoleHandler\r\njava.util.logging.ConsoleHandler.level = ALL\r\n.level = FINE\r\n"
 										.getBytes()));
 			} catch (SecurityException | IOException e1) {
 				// TODO Auto-generated catch block
@@ -292,7 +293,7 @@ public class ApplicationBuilder {
 			e1.printStackTrace();
 		}
 
-		final Weld weld = new Weld() {
+		Weld weld = new Weld() {
 			@Override
 			protected Deployment createDeployment(ResourceLoader resourceLoader, CDI11Bootstrap bootstrap) {
 				Deployment deployment = super.createDeployment(resourceLoader, bootstrap);
@@ -304,6 +305,11 @@ public class ApplicationBuilder {
 			}
 		};
 
-		return new Application(weld);
+		for (Extension e : extensions)
+			weld = weld.addExtension(e);
+
+		Application a = new Application(weld, extensions);
+
+		return a;
 	}
 }

@@ -2,8 +2,13 @@ package test;
 
 import java.lang.annotation.Annotation;
 
+import javax.enterprise.event.Event;
+import javax.enterprise.util.TypeLiteral;
+
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
+
+import com.github.naf.spi.Extension;
 
 public class Application implements AutoCloseable {
 
@@ -26,10 +31,16 @@ public class Application implements AutoCloseable {
 		// });
 	}
 
-	public Application(Weld weld) {
+	private final Iterable<Extension> extensions;
+
+	Application(Weld weld, Iterable<Extension> extensions) {
 		// StartMain.PARAMETERS = args;
 		this.weld = weld;
 		this.container = weld.initialize();
+		this.extensions = extensions;
+
+		container.instance().select(new TypeLiteral<Event<AfterBootEvent>>() {
+		}).get().fire(new AfterBootEvent());
 	}
 
 	@Override
@@ -48,7 +59,11 @@ public class Application implements AutoCloseable {
 
 	public void shutdown() {
 		// TODO Auto-generated method stub
+	}
 
+	public void join() {
+		for (Extension e : extensions)
+			e.join();
 	}
 
 }

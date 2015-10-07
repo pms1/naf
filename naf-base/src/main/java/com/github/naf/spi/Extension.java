@@ -4,7 +4,7 @@ import org.jboss.weld.bootstrap.spi.Deployment;
 
 import test.ApplicationContext;
 
-public interface Extension {
+public interface Extension extends javax.enterprise.inject.spi.Extension {
 	default Deployment processDeployment(ApplicationContext applicationContext, Deployment deployment) {
 		return deployment;
 	}
@@ -12,4 +12,9 @@ public interface Extension {
 	default Object transformResource(Object resource) {
 		return null;
 	}
+
+	default void join() {
+
+	}
+
 }
