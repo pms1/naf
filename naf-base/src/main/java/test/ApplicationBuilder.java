@@ -27,6 +27,10 @@ import javax.naming.spi.NamingManager;
 
 import org.jboss.weld.bootstrap.api.CDI11Bootstrap;
 import org.jboss.weld.bootstrap.spi.Deployment;
+import org.jboss.weld.ejb.api.SessionObjectReference;
+import org.jboss.weld.ejb.spi.EjbDescriptor;
+import org.jboss.weld.ejb.spi.EjbServices;
+import org.jboss.weld.ejb.spi.InterceptorBindings;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.resources.spi.ResourceLoader;
 
@@ -247,8 +251,8 @@ public class ApplicationBuilder {
 			try {
 				LogManager.getLogManager()
 						.readConfiguration(new ByteArrayInputStream(
-								"handlers = java.util.logging.ConsoleHandler\r\njava.util.logging.ConsoleHandler.level = ALL\r\n.level = FINE\r\n"
-										.getBytes()));
+								("handlers = java.util.logging.ConsoleHandler\r\njava.util.logging.ConsoleHandler.level = ALL\r\n.level = WARNING\norg.hibernate.SQL.level = FINEST\r\norg.hibernate.integrator.level = FINEST\r\n"
+										+ "com.github.naf.jta.level=FINEST\r\n").getBytes()));
 			} catch (SecurityException | IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -301,6 +305,7 @@ public class ApplicationBuilder {
 				for (Extension e : extensions)
 					deployment = e.processDeployment(ac, deployment);
 
+				deployment.getServices().add(EjbServices.class, new FakeEjbServices());
 				return deployment;
 			}
 		};
@@ -311,5 +316,25 @@ public class ApplicationBuilder {
 		Application a = new Application(weld, extensions);
 
 		return a;
+	}
+
+	static class FakeEjbServices implements EjbServices {
+
+		@Override
+		public void cleanup() {
+			// throw new Error();
+		}
+
+		@Override
+		public SessionObjectReference resolveEjb(EjbDescriptor<?> ejbDescriptor) {
+			throw new Error();
+		}
+
+		@Override
+		public void registerInterceptors(EjbDescriptor<?> ejbDescriptor, InterceptorBindings interceptorBindings) {
+			throw new Error();
+
+		}
+
 	}
 }

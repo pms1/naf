@@ -9,7 +9,9 @@ import javax.interceptor.InvocationContext;
 import javax.transaction.Status;
 import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
+import javax.transaction.TransactionRequiredException;
 import javax.transaction.Transactional;
+import javax.transaction.TransactionalException;
 
 @ApplicationScoped
 class TransactionalHandler {
@@ -72,28 +74,27 @@ class TransactionalHandler {
 			logger.log(Level.FINE,
 					"UTM " + this + " " + ic.getMethod() + " BEGIN REQUIRES_NEW AFTER " + tm.getTransaction());
 			break;
+		case MANDATORY:
+			if (tm.getTransaction() == null) {
+				throw new TransactionalException(
+						"Transaction type " + t.value() + " for " + ic + ", but outside a transaction context",
+						new TransactionRequiredException());
+			}
+			break;
 		default:
 			throw new UnsupportedOperationException("transaction type " + t.value());
 		}
 
 		Object resultReturned = null;
 		Throwable resultThrown = null;
-		try
-
-		{
+		try {
 			resultReturned = ic.proceed();
-		} catch (
-
-		Throwable t1)
-
-		{
+		} catch (Throwable t1) {
 			resultThrown = t1;
 		}
 		logger.log(Level.FINE, "RESULT " + (resultReturned != null) + " " + resultThrown);
 
-		if (remove)
-
-		{
+		if (remove) {
 			if (resultThrown == null) {
 				logger.log(Level.FINE, "UTM " + this + " " + ic.getMethod() + " COMMIT BEFORE " + tm.getTransaction());
 				tm.commit();
@@ -106,9 +107,7 @@ class TransactionalHandler {
 			}
 		}
 
-		if (suspended != null)
-
-		{
+		if (suspended != null) {
 			logger.log(Level.FINE, "UTM " + this + " " + ic.getMethod() + " RESUME BEFORE " + tm.getTransaction());
 			tm.resume(suspended);
 			logger.log(Level.FINE, "UTM " + this + " " + ic.getMethod() + " RESUME AFTER " + tm.getTransaction());
@@ -123,7 +122,6 @@ class TransactionalHandler {
 		}
 
 		return resultReturned;
-
 	}
 
 	private static String statusToString(int status) {

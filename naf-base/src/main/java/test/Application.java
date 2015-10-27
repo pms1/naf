@@ -45,8 +45,12 @@ public class Application implements AutoCloseable {
 
 	@Override
 	public void close() {
-		if (container.isRunning())
+		if (container.isRunning()) {
+			container.instance().select(new TypeLiteral<Event<ShutdownEvent>>() {
+			}).get().fire(new ShutdownEvent());
+
 			weld.shutdown();
+		}
 	}
 
 	public <T> T get(Class<T> clazz, Annotation... annotations) {

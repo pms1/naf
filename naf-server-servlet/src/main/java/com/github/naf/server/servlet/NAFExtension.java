@@ -9,6 +9,7 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.jboss.weld.environment.servlet.Listener;
 
 import test.AfterBootEvent;
+import test.ShutdownEvent;
 
 public class NAFExtension implements com.github.naf.spi.Extension {
 	private Server jettyServer;
@@ -38,6 +39,18 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 			jettyServer.join();
 		} catch (InterruptedException e) {
 			throw new Error(e);
+		}
+	}
+
+	void shutdown(@Observes ShutdownEvent shutdownEvent) {
+		if (jettyServer == null)
+			return;
+		if (jettyServer.isRunning()) {
+			try {
+				jettyServer.stop();
+			} catch (Exception e) {
+				throw new Error(e);
+			}
 		}
 	}
 }
