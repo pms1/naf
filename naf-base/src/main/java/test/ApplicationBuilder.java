@@ -249,10 +249,12 @@ public class ApplicationBuilder {
 	public Application build() {
 		if (true)
 			try {
-				LogManager.getLogManager()
-						.readConfiguration(new ByteArrayInputStream(
-								("handlers = java.util.logging.ConsoleHandler\r\njava.util.logging.ConsoleHandler.level = ALL\r\n.level = WARNING\norg.hibernate.SQL.level = FINEST\r\norg.hibernate.integrator.level = FINEST\r\n"
-										+ "com.github.naf.jta.level=FINEST\r\n").getBytes()));
+				LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(
+						("handlers = java.util.logging.ConsoleHandler\r\njava.util.logging.ConsoleHandler.level = ALL\r\n.level = WARNING\norg.hibernate.SQL.level = FINEST\r\norg.hibernate.integrator.level = FINEST\r\n"
+								// + "com.github.naf.jta.level=FINEST\r\n" //
+								+ "org.glassfish.jersey.server.model.level=WARNING\r\n" //
+				// + ".level=FINEST\r\n" //
+				).getBytes()));
 			} catch (SecurityException | IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
