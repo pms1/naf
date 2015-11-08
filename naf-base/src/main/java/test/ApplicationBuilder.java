@@ -32,6 +32,7 @@ import org.jboss.weld.ejb.spi.EjbDescriptor;
 import org.jboss.weld.ejb.spi.EjbServices;
 import org.jboss.weld.ejb.spi.InterceptorBindings;
 import org.jboss.weld.environment.se.Weld;
+import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.resources.spi.ResourceLoader;
 
 import com.github.naf.spi.Extension;
@@ -44,12 +45,29 @@ public class ApplicationBuilder {
 
 	private Map<String, Object> resources = new HashMap<>();
 
+	private String[] args;
+
 	public ApplicationBuilder withResource(String id, Object o) {
 		Objects.requireNonNull(id);
 		Objects.requireNonNull(o);
 		Object old = resources.putIfAbsent(id, o);
 		if (old != null)
 			throw new IllegalArgumentException();
+		return this;
+	}
+
+	/**
+	 * Make {@code args} available for injection using Weld's {@link Parameters}
+	 * annotation. If this method is not called, {@link Parameters} is not
+	 * available for injection.
+	 * 
+	 * @param args
+	 *            The command line arguments. Must not be {@code null}.
+	 * @return this
+	 */
+	public ApplicationBuilder withParameters(String[] args) {
+		Objects.requireNonNull(args);
+		this.args = args;
 		return this;
 	}
 
@@ -314,6 +332,11 @@ public class ApplicationBuilder {
 
 		for (Extension e : extensions)
 			weld = weld.addExtension(e);
+
+		if (args != null)
+			weld = weld.addExtension(new ParametersExtension(args));
+		else
+			weld = weld.addExtension(new ParametersExtension());
 
 		Application a = new Application(weld, extensions);
 
