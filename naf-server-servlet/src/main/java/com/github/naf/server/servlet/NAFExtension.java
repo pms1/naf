@@ -45,12 +45,13 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 	void shutdown(@Observes ShutdownEvent shutdownEvent) {
 		if (jettyServer == null)
 			return;
-		if (jettyServer.isRunning()) {
-			try {
-				jettyServer.stop();
-			} catch (Exception e) {
-				throw new Error(e);
-			}
+		// always try to shutdown (require at least on isRunning and FAILED;
+		// jetty is ignoring duplicate stop() gracefully)
+		try {
+			jettyServer.stop();
+		} catch (Exception e) {
+			e.printStackTrace();
+			// throw new Error(e);
 		}
 	}
 }

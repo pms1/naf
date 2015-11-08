@@ -3,6 +3,7 @@ package test;
 import java.lang.annotation.Annotation;
 
 import javax.enterprise.event.Event;
+import javax.enterprise.event.ObserverException;
 import javax.enterprise.util.TypeLiteral;
 
 import org.jboss.weld.environment.se.Weld;
@@ -39,8 +40,19 @@ public class Application implements AutoCloseable {
 		this.container = weld.initialize();
 		this.extensions = extensions;
 
-		container.instance().select(new TypeLiteral<Event<AfterBootEvent>>() {
-		}).get().fire(new AfterBootEvent());
+		try {
+			container.instance().select(new TypeLiteral<Event<AfterBootEvent>>() {
+			}).get().fire(new AfterBootEvent());
+		} catch (ObserverException e) {
+			try {
+				container.instance().select(new TypeLiteral<Event<ShutdownEvent>>() {
+				}).get().fire(new ShutdownEvent());
+			} finally {
+				weld.shutdown();
+			}
+
+			throw new Error(e);
+		}
 	}
 
 	@Override
