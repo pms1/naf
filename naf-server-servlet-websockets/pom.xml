@@ -15,12 +15,17 @@
 			<artifactId>naf-server-servlet</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
-		
-		    <!-- To run javax.websocket in embedded server -->
-    <dependency>
-      <groupId>org.eclipse.jetty.websocket</groupId>
-      <artifactId>javax-websocket-server-impl</artifactId>
-      <version>${jetty-version}</version>
-    </dependency>
+
+		<!-- To run javax.websocket in embedded server -->
+		<dependency>
+			<groupId>org.eclipse.jetty.websocket</groupId>
+			<artifactId>javax-websocket-server-impl</artifactId>
+		</dependency>
+
+		<!-- Creation of endpoint proxies -->
+		<dependency>
+			<groupId>org.javassist</groupId>
+			<artifactId>javassist</artifactId>
+		</dependency>
 	</dependencies>
 </project>
