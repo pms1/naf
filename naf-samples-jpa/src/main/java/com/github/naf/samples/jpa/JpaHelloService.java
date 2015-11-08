@@ -42,6 +42,32 @@ public class JpaHelloService {
 
 	}
 
+	@Transactional
+	public void hello3() {
+		Samples s = new Samples();
+		s.key = "k";
+		s.value = "v";
+		S2 s2 = new S2();
+		s2.setKey("k2");
+		s.s2 = s2;
+		entityManager.persist(s2);
+		entityManager.persist(s);
+	}
+
+	@Transactional
+	public void hello4() {
+		for (Samples o : entityManager.createQuery("from Samples", Samples.class).getResultList()) {
+			System.err.println("o1 " + o);
+			System.err.println("o1 " + o.getClass());
+			System.err.println("o1 " + o.s2.getClass());
+			System.err.println("o2 " + o.s2.getId());
+			System.err.println("o2 " + o.s2.getKey());
+			System.err.println("o2 " + o.s2);
+			System.err.println("o2 " + o.s2.getId());
+			System.err.println("o2 " + o.s2.getKey());
+		}
+	}
+
 	@Inject
 	UserTransaction ut;
 

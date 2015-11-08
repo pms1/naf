@@ -29,12 +29,17 @@ public class JpaSampleMain {
 		try (Application a = new ApplicationBuilder() //
 				.withResource("java:comp/env/jdbc/test", ds) //
 				.build()) {
-			a.get(JpaHelloService.class).hello();
-			a.get(JpaHelloService.class).hello2();
+			if (false) {
+				a.get(JpaHelloService.class).hello();
+				a.get(JpaHelloService.class).hello2();
 
+				JpaHelloService service = a.get(JpaHelloService.class);
+				for (int i = 0; i != 10; ++i)
+					service.hello();
+			}
 			JpaHelloService service = a.get(JpaHelloService.class);
-			for (int i = 0; i != 10; ++i)
-				service.hello();
+			service.hello3();
+			service.hello4();
 		}
 	}
 }
