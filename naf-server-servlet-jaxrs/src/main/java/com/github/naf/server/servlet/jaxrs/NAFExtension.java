@@ -4,6 +4,7 @@ import java.util.stream.Collectors;
 
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.BeanManager;
+import javax.ws.rs.ext.Provider;
 
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.server.ServerProperties;
@@ -23,7 +24,7 @@ public class NAFExtension implements Extension {
 		jerseyServlet.setInitParameter(ServerProperties.PROVIDER_CLASSNAMES,
 				bm.getBeans(Object.class).stream()//
 						.map(b -> b.getBeanClass()) //
-						.filter(c -> Resource.getPath(c) != null) //
+						.filter(c -> Resource.getPath(c) != null || c.isAnnotationPresent(Provider.class)) //
 						.map(c -> c.getCanonicalName()) //
 						.collect(Collectors.joining(" ")));
 
