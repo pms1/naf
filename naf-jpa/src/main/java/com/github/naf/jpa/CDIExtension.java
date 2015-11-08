@@ -25,7 +25,7 @@ import org.jboss.weld.injection.spi.ResourceReference;
 import org.jboss.weld.injection.spi.ResourceReferenceFactory;
 import org.jboss.weld.transaction.spi.TransactionServices;
 
-import test.ApplicationContext;
+import com.github.naf.spi.ApplicationContext;
 
 public class CDIExtension implements com.github.naf.spi.Extension {
 

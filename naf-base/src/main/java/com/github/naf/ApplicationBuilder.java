@@ -1,4 +1,4 @@
-package test;
+package com.github.naf;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -35,6 +35,7 @@ import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.resources.spi.ResourceLoader;
 
+import com.github.naf.spi.ApplicationContext;
 import com.github.naf.spi.Extension;
 import com.google.common.collect.Iterables;
 

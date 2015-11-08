@@ -5,10 +5,9 @@ import java.util.ServiceLoader;
 import org.jboss.weld.bootstrap.spi.Deployment;
 import org.jboss.weld.transaction.spi.TransactionServices;
 
+import com.github.naf.spi.ApplicationContext;
 import com.github.naf.spi.Extension;
 import com.google.common.collect.Iterators;
-
-import test.ApplicationContext;
 
 public class NAFExtension implements Extension {
 

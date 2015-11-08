@@ -1,4 +1,4 @@
-package test;
+package com.github.naf;
 
 import java.util.Arrays;
 import java.util.Objects;

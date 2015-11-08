@@ -2,8 +2,6 @@ package com.github.naf.spi;
 
 import org.jboss.weld.bootstrap.spi.Deployment;
 
-import test.ApplicationContext;
-
 public interface Extension extends javax.enterprise.inject.spi.Extension {
 	default Deployment processDeployment(ApplicationContext applicationContext, Deployment deployment) {
 		return deployment;

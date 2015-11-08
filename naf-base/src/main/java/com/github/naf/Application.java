@@ -1,4 +1,4 @@
-package test;
+package com.github.naf;
 
 import java.lang.annotation.Annotation;
 
@@ -9,7 +9,9 @@ import javax.enterprise.util.TypeLiteral;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 
+import com.github.naf.spi.AfterBootEvent;
 import com.github.naf.spi.Extension;
+import com.github.naf.spi.ShutdownEvent;
 
 public class Application implements AutoCloseable {
 
