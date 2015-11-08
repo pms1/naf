@@ -6,8 +6,8 @@ import javax.inject.Inject;
 
 import org.jboss.weld.environment.se.bindings.Parameters;
 
-import test.Application;
-import test.ApplicationBuilder;
+import com.github.naf.Application;
+import com.github.naf.ApplicationBuilder;
 
 public class ParametersMain {
 	static class Injected {

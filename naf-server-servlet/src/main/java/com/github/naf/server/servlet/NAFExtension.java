@@ -8,8 +8,8 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.jboss.weld.environment.servlet.Listener;
 
-import test.AfterBootEvent;
-import test.ShutdownEvent;
+import com.github.naf.spi.AfterBootEvent;
+import com.github.naf.spi.ShutdownEvent;
 
 public class NAFExtension implements com.github.naf.spi.Extension {
 	private Server jettyServer;

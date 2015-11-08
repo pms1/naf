@@ -15,8 +15,8 @@ import org.jboss.weld.bean.builtin.BeanManagerProxy;
 import org.jboss.weld.context.AbstractBoundContext;
 import org.jboss.weld.manager.BeanManagerImpl;
 
-import test.Application;
-import test.ApplicationBuilder;
+import com.github.naf.Application;
+import com.github.naf.ApplicationBuilder;
 
 public class JaxrsServletSampleMain {
 	public static void main(String[] args) throws NoSuchMethodException, SecurityException, IllegalAccessException,

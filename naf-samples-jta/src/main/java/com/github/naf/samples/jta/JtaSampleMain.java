@@ -1,7 +1,7 @@
 package com.github.naf.samples.jta;
 
-import test.Application;
-import test.ApplicationBuilder;
+import com.github.naf.Application;
+import com.github.naf.ApplicationBuilder;
 
 public class JtaSampleMain {
 	public static void main(String[] args) {

@@ -2,10 +2,9 @@ package com.github.naf.samples.jpa;
 
 import org.postgresql.xa.PGXADataSource;
 
+import com.github.naf.Application;
+import com.github.naf.ApplicationBuilder;
 import com.github.naf.jta.XADataSourceFactory;
-
-import test.Application;
-import test.ApplicationBuilder;
 
 public class JpaSampleMain {
 	public static void main(String[] args) {

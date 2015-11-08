@@ -1,7 +1,7 @@
 package pkg;
 
-import test.Application;
-import test.ApplicationBuilder;
+import com.github.naf.Application;
+import com.github.naf.ApplicationBuilder;
 
 public class WebsocketsServletSampleMain {
 	public static void main(String[] args) {
