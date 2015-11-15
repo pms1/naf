@@ -1,10 +1,18 @@
 package com.github.naf.server.servlet;
 
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+
 import javax.enterprise.event.Event;
 import javax.enterprise.event.Observes;
+import javax.enterprise.inject.Produces;
 import javax.enterprise.inject.spi.BeanManager;
+import javax.inject.Inject;
 
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.jboss.weld.environment.servlet.Listener;
 
@@ -14,14 +22,54 @@ import com.github.naf.spi.ShutdownEvent;
 public class NAFExtension implements com.github.naf.spi.Extension {
 	private Server jettyServer;
 
+	private ServerEndpointConfiguration config = new ServerEndpointConfiguration();
+
+	@Override
+	public boolean with(Object o) {
+		if (o instanceof ServerEndpointConfiguration) {
+			this.config = (ServerEndpointConfiguration) o;
+			return true;
+		}
+		return false;
+	}
+
+	static class Producer {
+
+		@Inject
+		BeanManager bm;
+
+		@Produces
+		URI uri() {
+			NAFExtension e = bm.getExtension(NAFExtension.class);
+
+			Connector[] connectors = e.jettyServer.getConnectors();
+			if (connectors.length != 1)
+				throw new IllegalStateException();
+			ServerConnector sc = (ServerConnector) connectors[0];
+
+			int port = sc.getLocalPort();
+			if (port < 0)
+				throw new IllegalStateException();
+			String host = sc.getHost();
+			if (host == null)
+				throw new IllegalStateException();
+
+			try {
+				return new URI("http", null, host, port, contextPath, null, null);
+			} catch (URISyntaxException e1) {
+				throw new RuntimeException(e1);
+			}
+		}
+	}
+
+	private static final String contextPath = "/";
+
 	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, Event<ServletInitializationEvent> event) {
-
 		ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-		context.setContextPath("/");
+		context.setContextPath(contextPath);
 
-		jettyServer = new Server(8080);
+		jettyServer = new Server(new InetSocketAddress(config.getAddress(), config.getPort()));
 		jettyServer.setHandler(context);
-
 		context.addEventListener(Listener.using(bm));
 
 		event.fire(new ServletInitializationEvent(context));

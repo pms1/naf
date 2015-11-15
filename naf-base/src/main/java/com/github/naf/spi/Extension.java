@@ -15,4 +15,8 @@ public interface Extension extends javax.enterprise.inject.spi.Extension {
 
 	}
 
+	default boolean with(Object o) {
+		return false;
+	}
+
 }

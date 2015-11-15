@@ -57,6 +57,16 @@ public class ApplicationBuilder {
 		return this;
 	}
 
+	private List<Object> with = new LinkedList<>();
+
+	public ApplicationBuilder with(Object o) {
+		Objects.requireNonNull(o);
+		if (with.contains(o))
+			throw new IllegalArgumentException();
+		with.add(o);
+		return this;
+	}
+
 	/**
 	 * Make {@code args} available for injection using Weld's {@link Parameters}
 	 * annotation. If this method is not called, {@link Parameters} is not
@@ -280,6 +290,20 @@ public class ApplicationBuilder {
 			}
 
 		ServiceLoader<Extension> extensions = ServiceLoader.load(Extension.class);
+
+		for (Object o : with) {
+			boolean handled = false;
+			for (Extension e : extensions) {
+				if (e.with(o)) {
+					handled = true;
+					break;
+				}
+			}
+			if (!handled) {
+				throw new IllegalStateException("Cannot handle resource: " + o);
+			}
+		}
+
 		Map<String, Object> transformedResources = new HashMap<>();
 		for (Map.Entry<String, Object> r : resources.entrySet()) {
 			List<Object> cand = new LinkedList<>();
