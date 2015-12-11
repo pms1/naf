@@ -11,6 +11,9 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.logging.LogManager;
 
+import javax.ejb.TimerService;
+import javax.enterprise.inject.spi.BeanManager;
+import javax.enterprise.inject.spi.InjectionPoint;
 import javax.naming.Binding;
 import javax.naming.CompositeName;
 import javax.naming.Context;
@@ -32,7 +35,12 @@ import org.jboss.weld.ejb.spi.EjbDescriptor;
 import org.jboss.weld.ejb.spi.EjbServices;
 import org.jboss.weld.ejb.spi.InterceptorBindings;
 import org.jboss.weld.environment.se.Weld;
+import org.jboss.weld.environment.se.WeldContainer;
 import org.jboss.weld.environment.se.bindings.Parameters;
+import org.jboss.weld.injection.spi.ResourceInjectionServices;
+import org.jboss.weld.injection.spi.ResourceReference;
+import org.jboss.weld.injection.spi.ResourceReferenceFactory;
+import org.jboss.weld.manager.BeanManagerImpl;
 import org.jboss.weld.resources.spi.ResourceLoader;
 
 import com.github.naf.spi.ApplicationContext;
@@ -291,8 +299,14 @@ public class ApplicationBuilder {
 
 		ServiceLoader<Extension> extensions = ServiceLoader.load(Extension.class);
 
+		List<javax.enterprise.inject.spi.Extension> manualExtensions = new LinkedList<>();
+
 		for (Object o : with) {
 			boolean handled = false;
+			if (o instanceof javax.enterprise.inject.spi.Extension) {
+				manualExtensions.add((javax.enterprise.inject.spi.Extension) o);
+				handled = true;
+			}
 			for (Extension e : extensions) {
 				if (e.with(o)) {
 					handled = true;
@@ -337,10 +351,15 @@ public class ApplicationBuilder {
 
 		try {
 			NamingManager.setInitialContextFactoryBuilder(new X(ac));
+		} catch (IllegalStateException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
 		} catch (NamingException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+
+		ResourceInjectionServicesImpl ris = new ResourceInjectionServicesImpl();
 
 		Weld weld = new Weld() {
 			@Override
@@ -351,11 +370,15 @@ public class ApplicationBuilder {
 					deployment = e.processDeployment(ac, deployment);
 
 				deployment.getServices().add(EjbServices.class, new FakeEjbServices());
+				deployment.getServices().add(ResourceInjectionServices.class, ris);
+
 				return deployment;
 			}
 		};
 
 		for (Extension e : extensions)
+			weld = weld.addExtension(e);
+		for (javax.enterprise.inject.spi.Extension e : manualExtensions)
 			weld = weld.addExtension(e);
 
 		if (args != null)
@@ -363,7 +386,11 @@ public class ApplicationBuilder {
 		else
 			weld = weld.addExtension(new ParametersExtension());
 
-		Application a = new Application(weld, extensions);
+		WeldContainer container = weld.initialize();
+
+		Application a = new Application(weld, container, extensions);
+
+		ris.setBeanManager(container.getBeanManager());
 
 		return a;
 	}
@@ -384,6 +411,67 @@ public class ApplicationBuilder {
 		public void registerInterceptors(EjbDescriptor<?> ejbDescriptor, InterceptorBindings interceptorBindings) {
 			throw new Error();
 
+		}
+
+	}
+
+	static class ResourceInjectionServicesImpl implements ResourceInjectionServices {
+
+		@Override
+		public void cleanup() {
+
+		}
+
+		BeanManagerImpl bm;
+
+		public void setBeanManager(BeanManager beanManager) {
+			bm = (BeanManagerImpl) beanManager;
+		}
+
+		@Override
+		public ResourceReferenceFactory<Object> registerResourceInjectionPoint(InjectionPoint injectionPoint) {
+
+			if (injectionPoint.getType().equals(TimerService.class)) {
+
+				return new ResourceReferenceFactory<Object>() {
+
+					@Override
+					public ResourceReference<Object> createResource() {
+
+						return new ResourceReference<Object>() {
+
+							@Override
+							public Object getInstance() {
+								return new TimerServiceImpl(injectionPoint, bm);
+							}
+
+							@Override
+							public void release() {
+								// TODO Auto-generated method stub
+
+							}
+						};
+					}
+				};
+			}
+
+			System.err.println("IP " + injectionPoint);
+			throw new Error("ip " + injectionPoint);
+		}
+
+		@Override
+		public ResourceReferenceFactory<Object> registerResourceInjectionPoint(String jndiName, String mappedName) {
+			throw new Error();
+		}
+
+		@Override
+		public Object resolveResource(InjectionPoint injectionPoint) {
+			throw new Error();
+		}
+
+		@Override
+		public Object resolveResource(String jndiName, String mappedName) {
+			throw new Error();
 		}
 
 	}

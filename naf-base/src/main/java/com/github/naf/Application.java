@@ -36,10 +36,10 @@ public class Application implements AutoCloseable {
 
 	private final Iterable<Extension> extensions;
 
-	Application(Weld weld, Iterable<Extension> extensions) {
+	Application(Weld weld, WeldContainer container, Iterable<Extension> extensions) {
 		// StartMain.PARAMETERS = args;
 		this.weld = weld;
-		this.container = weld.initialize();
+		this.container = container;
 		this.extensions = extensions;
 
 		try {
