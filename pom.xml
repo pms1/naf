@@ -9,7 +9,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-		<weld-version>2.3.1-SNAPSHOT</weld-version>
+		<weld-version>2.3.2-SNAPSHOT</weld-version>
 		<jetty-version>9.3.3.v20150827</jetty-version>
 	</properties>
 
@@ -44,9 +44,22 @@
 			</dependency>
 
 			<dependency>
+				<groupId>org.jboss.weld.se</groupId>
+				<artifactId>weld-se-core</artifactId>
+				<version>${weld-version}</version>
+			</dependency>
+			
+			<dependency>
 				<groupId>org.jboss.weld.servlet</groupId>
 				<artifactId>weld-servlet-core</artifactId>
 				<version>${weld-version}</version>
+			</dependency>
+
+			<!-- must be synced with weld -->
+			<dependency>
+				<groupId>org.jboss</groupId>
+				<artifactId>jandex</artifactId>
+				<version>1.2.1.Final</version>
 			</dependency>
 			
 			<dependency>
