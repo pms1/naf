@@ -91,11 +91,15 @@ public class ApplicationBuilder {
 	}
 
 	public static class X implements InitialContextFactoryBuilder {
-		final ApplicationContext ac;
+		private ApplicationContext ac;
 
-		public X(ApplicationContext ac) {
-			Objects.requireNonNull(ac);
+		void setApplicationContext(ApplicationContext ac) {
+			if ((ac != null) == (this.ac != null))
+				throw new IllegalStateException();
 			this.ac = ac;
+		}
+
+		public X() {
 		}
 
 		@Override
@@ -283,6 +287,20 @@ public class ApplicationBuilder {
 		}
 	}
 
+	static class Holder {
+		static X namingManager;
+
+		static {
+			try {
+				X x = new X();
+				NamingManager.setInitialContextFactoryBuilder(x);
+				namingManager = x;
+			} catch (IllegalStateException | NamingException e1) {
+				throw new Error("failed to set InitialContextFactoryBuilder");
+			}
+		}
+	}
+
 	public Application build() {
 		if (true)
 			try {
@@ -349,15 +367,7 @@ public class ApplicationBuilder {
 
 		};
 
-		try {
-			NamingManager.setInitialContextFactoryBuilder(new X(ac));
-		} catch (IllegalStateException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (NamingException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+		Holder.namingManager.setApplicationContext(ac);
 
 		ResourceInjectionServicesImpl ris = new ResourceInjectionServicesImpl();
 
@@ -388,7 +398,7 @@ public class ApplicationBuilder {
 
 		WeldContainer container = weld.initialize();
 
-		Application a = new Application(weld, container, extensions);
+		Application a = new Application(ac, weld, container, extensions);
 
 		ris.setBeanManager(container.getBeanManager());
 

@@ -10,6 +10,7 @@ import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 
 import com.github.naf.spi.AfterBootEvent;
+import com.github.naf.spi.ApplicationContext;
 import com.github.naf.spi.Extension;
 import com.github.naf.spi.ShutdownEvent;
 
@@ -35,12 +36,14 @@ public class Application implements AutoCloseable {
 	}
 
 	private final Iterable<Extension> extensions;
+	private final ApplicationContext ac;
 
-	Application(Weld weld, WeldContainer container, Iterable<Extension> extensions) {
+	Application(ApplicationContext ac, Weld weld, WeldContainer container, Iterable<Extension> extensions) {
 		// StartMain.PARAMETERS = args;
 		this.weld = weld;
 		this.container = container;
 		this.extensions = extensions;
+		this.ac = ac;
 
 		try {
 			container.instance().select(new TypeLiteral<Event<AfterBootEvent>>() {
@@ -65,6 +68,7 @@ public class Application implements AutoCloseable {
 
 			weld.shutdown();
 		}
+		ApplicationBuilder.Holder.namingManager.setApplicationContext(null);
 	}
 
 	public <T> T get(Class<T> clazz, Annotation... annotations) {
