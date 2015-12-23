@@ -9,8 +9,8 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-		<weld-version>2.3.2-SNAPSHOT</weld-version>
-		<jetty-version>9.3.3.v20150827</jetty-version>
+		<weld-version>2.3.2.Final</weld-version>
+		<jetty-version>9.3.6.v20151106</jetty-version>
 	</properties>
 
 	<prerequisites>
@@ -55,7 +55,7 @@
 				<version>${weld-version}</version>
 			</dependency>
 
-			<!-- must be synced with weld -->
+			<!-- must be synced with weld, 1.2.1 fits 2.3.2 -->
 			<dependency>
 				<groupId>org.jboss</groupId>
 				<artifactId>jandex</artifactId>
@@ -71,7 +71,7 @@
 			<dependency>
 				<groupId>org.hibernate</groupId>
 				<artifactId>hibernate-entitymanager</artifactId>
-				<version>5.0.3.Final</version>
+				<version>5.0.6.Final</version>
 				<!-- xml-apis is not needed for recent java versions -->
 				<exclusions>
 					<exclusion>
