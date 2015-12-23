@@ -452,7 +452,9 @@ public class ApplicationBuilder {
 
 							@Override
 							public Object getInstance() {
-								return new TimerServiceImpl(injectionPoint, bm);
+								// return new TimerServiceImpl(injectionPoint,
+								// bm);
+								throw new Error();
 							}
 
 							@Override
