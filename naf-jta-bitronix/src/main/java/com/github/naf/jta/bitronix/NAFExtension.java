@@ -6,6 +6,7 @@ import org.jboss.weld.transaction.spi.TransactionServices;
 import com.github.naf.jta.XADataSourceFactory;
 import com.github.naf.spi.ApplicationContext;
 import com.github.naf.spi.Extension;
+import com.github.naf.spi.RequirementException;
 
 import bitronix.tm.resource.jdbc.PoolingDataSource;
 
@@ -30,12 +31,12 @@ public class NAFExtension implements Extension {
 			return result;
 		}
 
-		// TODO Auto-generated method stub
 		return Extension.super.transformResource(resource);
 	}
 
 	@Override
-	public Deployment processDeployment(ApplicationContext applicationContext, Deployment deployment) {
+	public Deployment processDeployment(ApplicationContext applicationContext, Deployment deployment)
+			throws RequirementException {
 		deployment.getServices().add(TransactionServices.class, new BitronixTransactionServices());
 
 		return Extension.super.processDeployment(applicationContext, deployment);

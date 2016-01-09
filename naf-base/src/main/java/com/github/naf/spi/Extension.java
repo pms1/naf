@@ -3,7 +3,8 @@ package com.github.naf.spi;
 import org.jboss.weld.bootstrap.spi.Deployment;
 
 public interface Extension extends javax.enterprise.inject.spi.Extension {
-	default Deployment processDeployment(ApplicationContext applicationContext, Deployment deployment) {
+	default Deployment processDeployment(ApplicationContext applicationContext, Deployment deployment)
+			throws RequirementException {
 		return deployment;
 	}
 

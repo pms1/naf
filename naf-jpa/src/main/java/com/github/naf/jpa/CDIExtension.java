@@ -26,6 +26,7 @@ import org.jboss.weld.injection.spi.ResourceReferenceFactory;
 import org.jboss.weld.transaction.spi.TransactionServices;
 
 import com.github.naf.spi.ApplicationContext;
+import com.github.naf.spi.RequirementException;
 
 public class CDIExtension implements com.github.naf.spi.Extension {
 
@@ -103,12 +104,12 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 	private TransactionServices ts;
 
 	@Override
-	public Deployment processDeployment(ApplicationContext ac, Deployment deployment) {
+	public Deployment processDeployment(ApplicationContext ac, Deployment deployment) throws RequirementException {
 		this.ac = ac;
 
 		TransactionServices services = deployment.getServices().get(TransactionServices.class);
 		if (services == null)
-			throw new Error();
+			throw new RequirementException();
 		this.ts = services;
 
 		deployment.getServices().add(JpaInjectionServices.class, new JpaInjectionServices() {

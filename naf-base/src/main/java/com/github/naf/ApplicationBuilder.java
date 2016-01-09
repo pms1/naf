@@ -45,6 +45,7 @@ import org.jboss.weld.resources.spi.ResourceLoader;
 
 import com.github.naf.spi.ApplicationContext;
 import com.github.naf.spi.Extension;
+import com.github.naf.spi.RequirementException;
 import com.google.common.collect.Iterables;
 
 public class ApplicationBuilder {
@@ -304,15 +305,24 @@ public class ApplicationBuilder {
 	public Application build() {
 		if (true)
 			try {
-				LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(
-						("handlers = java.util.logging.ConsoleHandler\r\njava.util.logging.ConsoleHandler.level = ALL\r\n.level = WARNING\norg.hibernate.SQL.level = FINEST\r\norg.hibernate.integrator.level = FINEST\r\n"
-								// + "com.github.naf.jta.level=FINEST\r\n" //
-								+ "org.glassfish.jersey.server.model.level=WARNING\r\n" //
+				LogManager.getLogManager()
+						.readConfiguration(new ByteArrayInputStream(( //
+								"handlers = java.util.logging.ConsoleHandler\r\n" //
+										//
+										+ "java.util.logging.ConsoleHandler.level = ALL\r\n" //
+										+ ".level = INFO\r\n" //
+										+ "org.hibernate.level = WARNING\r\n" //
+										+ "XXorg.hibernate.SQL.level = FINEST\r\n" //
+										+ "XXorg.hibernate.integrator.level = FINEST\r\n" //
+										+ "bitronix.tm.level = WARNING\r\n" //
+										+ "org.jboss.weld.level = WARNING\r\n" //
+										+ "org.eclipse.jetty.level = WARNING\r\n" //
+										+ "org.glassfish.jersey.server.model.level=WARNING\r\n" //
+				// + "com.github.naf.jta.level=FINEST\r\n" //
 				// + ".level=FINEST\r\n" //
 				).getBytes()));
 			} catch (SecurityException | IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+				throw new RuntimeException(e1);
 			}
 
 		ServiceLoader<Extension> extensions = ServiceLoader.load(Extension.class);
@@ -376,8 +386,24 @@ public class ApplicationBuilder {
 			protected Deployment createDeployment(ResourceLoader resourceLoader, CDI11Bootstrap bootstrap) {
 				Deployment deployment = super.createDeployment(resourceLoader, bootstrap);
 
-				for (Extension e : extensions)
-					deployment = e.processDeployment(ac, deployment);
+				List<Extension> todo = new LinkedList<>();
+				Iterables.addAll(todo, extensions);
+				for (;;) {
+					List<Extension> again = new LinkedList<>();
+					for (Extension e : todo) {
+						try {
+							deployment = e.processDeployment(ac, deployment);
+						} catch (RequirementException e1) {
+							again.add(e);
+						}
+					}
+					if (again.isEmpty())
+						break;
+					else if (again.size() == todo.size())
+						throw new Error("Unresolved requirements");
+					else
+						todo = again;
+				}
 
 				deployment.getServices().add(EjbServices.class, new FakeEjbServices());
 				deployment.getServices().add(ResourceInjectionServices.class, ris);

@@ -27,8 +27,9 @@ public class NAFExtension implements Extension {
 						.filter(c -> Resource.getPath(c) != null || c.isAnnotationPresent(Provider.class)) //
 						.map(c -> c.getCanonicalName()) //
 						.collect(Collectors.joining(" ")));
-
 		System.err.println("PARAMS " + jerseyServlet.getInitParameter(ServerProperties.PROVIDER_CLASSNAMES));
 
+		// suppress Content-Length for streaming output
+		jerseyServlet.setInitParameter(ServerProperties.OUTBOUND_CONTENT_LENGTH_BUFFER, "0");
 	}
 }
