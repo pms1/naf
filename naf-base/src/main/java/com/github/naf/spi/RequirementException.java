@@ -8,5 +8,7 @@ package com.github.naf.spi;
  *
  */
 public class RequirementException extends Exception {
-
+	public RequirementException(String message) {
+		super(message);
+	}
 }

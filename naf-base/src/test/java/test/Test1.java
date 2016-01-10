@@ -1,3 +1,4 @@
+package test;
 import javax.annotation.Resource;
 import javax.ejb.Timeout;
 import javax.ejb.TimerService;

@@ -317,6 +317,7 @@ public class ApplicationBuilder {
 										+ "bitronix.tm.level = WARNING\r\n" //
 										+ "org.jboss.weld.level = WARNING\r\n" //
 										+ "org.eclipse.jetty.level = WARNING\r\n" //
+				// + "org.glassfish.jersey.level=FINEST\r\n" //
 										+ "org.glassfish.jersey.server.model.level=WARNING\r\n" //
 				// + "com.github.naf.jta.level=FINEST\r\n" //
 				// + ".level=FINEST\r\n" //
@@ -390,17 +391,19 @@ public class ApplicationBuilder {
 				Iterables.addAll(todo, extensions);
 				for (;;) {
 					List<Extension> again = new LinkedList<>();
+					List<String> texts = new LinkedList<>();
 					for (Extension e : todo) {
 						try {
 							deployment = e.processDeployment(ac, deployment);
 						} catch (RequirementException e1) {
 							again.add(e);
+							texts.add(e1.toString());
 						}
 					}
 					if (again.isEmpty())
 						break;
 					else if (again.size() == todo.size())
-						throw new Error("Unresolved requirements");
+						throw new Error("Unresolved requirements: " + texts);
 					else
 						todo = again;
 				}

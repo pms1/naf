@@ -109,7 +109,7 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 
 		TransactionServices services = deployment.getServices().get(TransactionServices.class);
 		if (services == null)
-			throw new RequirementException();
+			throw new RequirementException("Missing: TransactionServices");
 		this.ts = services;
 
 		deployment.getServices().add(JpaInjectionServices.class, new JpaInjectionServices() {

@@ -4,8 +4,11 @@ import java.lang.annotation.Annotation;
 
 import javax.enterprise.event.Event;
 import javax.enterprise.event.ObserverException;
+import javax.enterprise.util.AnnotationLiteral;
 import javax.enterprise.util.TypeLiteral;
 
+import org.jboss.weld.context.RequestContext;
+import org.jboss.weld.context.unbound.Unbound;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 
@@ -86,6 +89,18 @@ public class Application implements AutoCloseable {
 	public void join() {
 		for (Extension e : extensions)
 			e.join();
+	}
+
+	public void withRequestContext(Runnable object) {
+		RequestContext rc = container.instance().select(RequestContext.class, new AnnotationLiteral<Unbound>() {
+		}).get();
+
+		rc.activate();
+		try {
+			object.run();
+		} finally {
+			rc.deactivate();
+		}
 	}
 
 }
