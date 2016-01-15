@@ -312,6 +312,7 @@ public class ApplicationBuilder {
 										+ "java.util.logging.ConsoleHandler.level = ALL\r\n" //
 										+ ".level = INFO\r\n" //
 										+ "org.hibernate.level = WARNING\r\n" //
+										+ "XXorg.hibernate.level = FINEST\r\n" //
 										+ "XXorg.hibernate.SQL.level = FINEST\r\n" //
 										+ "XXorg.hibernate.integrator.level = FINEST\r\n" //
 										+ "bitronix.tm.level = WARNING\r\n" //
@@ -427,7 +428,7 @@ public class ApplicationBuilder {
 
 		WeldContainer container = weld.initialize();
 
-		Application a = new Application(ac, weld, container, extensions);
+		Application a = new ApplicationImpl(ac, weld, container, extensions);
 
 		ris.setBeanManager(container.getBeanManager());
 
