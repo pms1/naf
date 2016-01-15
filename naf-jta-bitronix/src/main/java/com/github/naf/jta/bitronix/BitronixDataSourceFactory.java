@@ -1,7 +1,6 @@
 package com.github.naf.jta.bitronix;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.sql.DataSource;
 
 import bitronix.tm.resource.jdbc.PoolingDataSource;
 
@@ -36,11 +35,6 @@ public class BitronixDataSourceFactory implements dq.platform.jpa.DataSourceFact
 		public Builder addProperty(String key, String value) {
 			myDataSource.getDriverProperties().setProperty(key, value);
 			return this;
-		}
-
-		public DataSource build() {
-			myDataSource.init();
-			return myDataSource;
 		}
 
 		@Override

@@ -1,7 +1,5 @@
 package dq.platform.jpa;
 
-import javax.sql.DataSource;
-
 public interface DataSourceFactory {
 	Builder create();
 
@@ -15,8 +13,5 @@ public interface DataSourceFactory {
 		Builder addProperty(String key, String value);
 
 		Builder setAllowLocalTransactions(boolean allowLocalTransaction);
-
-		DataSource build();
-
 	}
 }
