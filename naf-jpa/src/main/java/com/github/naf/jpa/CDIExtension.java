@@ -1,5 +1,6 @@
 package com.github.naf.jpa;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -41,6 +42,17 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 		}
 	}
 
+	private PersistenceUnitPropertiesPatcher propertiesPatcher = null;
+
+	@Override
+	public boolean with(Object o) {
+		if (o instanceof PersistenceUnitPropertiesPatcher) {
+			this.propertiesPatcher = (PersistenceUnitPropertiesPatcher) o;
+			return true;
+		}
+		return false;
+	}
+
 	private Map<Id, Ref> entityManagers = new HashMap<>();
 
 	EntityManagerFactory create(Id id) {
@@ -60,10 +72,21 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 						try {
 							ts.getUserTransaction().begin();
 							doRollback = true;
-							if (id.properties != null)
-								emf = Persistence.createEntityManagerFactory(id.unitName, id.properties);
-							else
-								emf = Persistence.createEntityManagerFactory(id.unitName);
+
+							if (propertiesPatcher == null) {
+								if (id.properties != null)
+									emf = Persistence.createEntityManagerFactory(id.unitName, id.properties);
+								else
+									emf = Persistence.createEntityManagerFactory(id.unitName);
+							} else {
+								Map<String, String> properties;
+
+								properties = new HashMap<>(
+										id.properties != null ? id.properties : Collections.emptyMap());
+								properties = propertiesPatcher.apply(id.unitName, properties);
+
+								emf = Persistence.createEntityManagerFactory(id.unitName, properties);
+							}
 							ts.getUserTransaction().commit();
 							doRollback = false;
 						} finally {
@@ -119,7 +142,6 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 				synchronized (CDIExtension.this) {
 					entityManagers.values().forEach(ref -> ref.emf.close());
 					entityManagers.clear();
-
 				}
 			}
 
@@ -155,7 +177,6 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 									em = created.createEntityManager(pc.synchronization(), properties);
 								else
 									em = created.createEntityManager(pc.synchronization());
-
 								// make sure that the session is cleared on
 								// commit()
 								SessionImplementor s = em.unwrap(SessionImplementor.class);
