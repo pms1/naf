@@ -46,6 +46,7 @@ import org.jboss.weld.resources.spi.ResourceLoader;
 import com.github.naf.spi.ApplicationContext;
 import com.github.naf.spi.Extension;
 import com.github.naf.spi.RequirementException;
+import com.github.naf.spi.Resource;
 import com.google.common.collect.Iterables;
 
 public class ApplicationBuilder {
@@ -348,19 +349,19 @@ public class ApplicationBuilder {
 			}
 		}
 
-		Map<String, Object> transformedResources = new HashMap<>();
+		Map<String, Resource> transformedResources = new HashMap<>();
 		for (Map.Entry<String, Object> r : resources.entrySet()) {
-			List<Object> cand = new LinkedList<>();
+			List<Resource> cand = new LinkedList<>();
 
 			for (Extension e : extensions) {
-				Object newResource = e.transformResource(r.getValue());
+				Resource newResource = e.transformResource(r.getValue());
 				if (newResource != null)
 					cand.add(newResource);
 			}
 
 			switch (cand.size()) {
 			case 0:
-				transformedResources.put(r.getKey(), r.getValue());
+				transformedResources.put(r.getKey(), () -> r.getValue());
 				break;
 			case 1:
 				transformedResources.put(r.getKey(), Iterables.getOnlyElement(cand));
@@ -374,7 +375,7 @@ public class ApplicationBuilder {
 
 			@Override
 			public Object getResource(String id) {
-				return transformedResources.get(id);
+				return transformedResources.get(id).getValue();
 			}
 
 		};
@@ -428,7 +429,9 @@ public class ApplicationBuilder {
 
 		WeldContainer container = weld.initialize();
 
-		Application a = new ApplicationImpl(ac, weld, container, extensions);
+		Application a = new ApplicationImpl(ac, weld, container, extensions, () -> {
+			transformedResources.values().forEach((r) -> r.close());
+		});
 
 		ris.setBeanManager(container.getBeanManager());
 

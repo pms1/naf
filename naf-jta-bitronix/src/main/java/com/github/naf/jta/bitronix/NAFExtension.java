@@ -7,13 +7,14 @@ import com.github.naf.jta.XADataSourceFactory;
 import com.github.naf.spi.ApplicationContext;
 import com.github.naf.spi.Extension;
 import com.github.naf.spi.RequirementException;
+import com.github.naf.spi.Resource;
 
 import bitronix.tm.resource.jdbc.PoolingDataSource;
 
 public class NAFExtension implements Extension {
 
 	@Override
-	public Object transformResource(Object resource) {
+	public Resource transformResource(Object resource) {
 
 		if (resource instanceof XADataSourceFactory) {
 			XADataSourceFactory f = (XADataSourceFactory) resource;
@@ -28,7 +29,19 @@ public class NAFExtension implements Extension {
 			if (f.allowLocalTransactions != null)
 				result.setAllowLocalTransactions(f.allowLocalTransactions);
 			result.getDriverProperties().putAll(f.properties);
-			return result;
+
+			return new Resource() {
+
+				@Override
+				public Object getValue() {
+					return result;
+				}
+
+				@Override
+				public void close() {
+					result.close();
+				}
+			};
 		}
 
 		return Extension.super.transformResource(resource);

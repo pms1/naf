@@ -17,7 +17,7 @@ import com.github.naf.spi.ApplicationContext;
 import com.github.naf.spi.Extension;
 import com.github.naf.spi.ShutdownEvent;
 
-public class ApplicationImpl implements Application {
+class ApplicationImpl implements Application {
 
 	private final Weld weld;
 	private final WeldContainer container;
@@ -40,13 +40,15 @@ public class ApplicationImpl implements Application {
 
 	private final Iterable<Extension> extensions;
 	private final ApplicationContext ac;
+	private final Runnable shutdownHook;
 
-	ApplicationImpl(ApplicationContext ac, Weld weld, WeldContainer container, Iterable<Extension> extensions) {
-		// StartMain.PARAMETERS = args;
+	ApplicationImpl(ApplicationContext ac, Weld weld, WeldContainer container, Iterable<Extension> extensions,
+			Runnable shutdownHook) {
 		this.weld = weld;
 		this.container = container;
 		this.extensions = extensions;
 		this.ac = ac;
+		this.shutdownHook = shutdownHook;
 
 		try {
 			container.instance().select(new TypeLiteral<Event<AfterBootEvent>>() {
@@ -71,6 +73,7 @@ public class ApplicationImpl implements Application {
 
 			weld.shutdown();
 		}
+		shutdownHook.run();
 		ApplicationBuilder.Holder.namingManager.setApplicationContext(null);
 	}
 
@@ -82,11 +85,6 @@ public class ApplicationImpl implements Application {
 	@Override
 	public <T> Iterable<T> getAll(Class<T> clazz, Annotation... annotations) {
 		return container.instance().select(clazz, annotations);
-	}
-
-	@Override
-	public void shutdown() {
-		// TODO Auto-generated method stub
 	}
 
 	@Override

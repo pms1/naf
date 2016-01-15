@@ -11,8 +11,6 @@ public interface Application extends AutoCloseable {
 
 	<T> Iterable<T> getAll(Class<T> clazz, Annotation... annotations);
 
-	void shutdown();
-
 	void join();
 
 	void withRequestContext(Runnable runnable);

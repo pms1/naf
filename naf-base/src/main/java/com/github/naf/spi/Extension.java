@@ -8,7 +8,7 @@ public interface Extension extends javax.enterprise.inject.spi.Extension {
 		return deployment;
 	}
 
-	default Object transformResource(Object resource) {
+	default Resource transformResource(Object resource) {
 		return null;
 	}
 
