@@ -11,6 +11,8 @@
 
 		<weld-version>2.3.2.Final</weld-version>
 		<jetty-version>9.3.6.v20151106</jetty-version>
+		<hibernate-version>5.0.6.Final</hibernate-version>
+		<sshd-core-version>1.0.0</sshd-core-version>
 	</properties>
 
 	<prerequisites>
@@ -71,7 +73,7 @@
 			<dependency>
 				<groupId>org.hibernate</groupId>
 				<artifactId>hibernate-entitymanager</artifactId>
-				<version>5.0.6.Final</version>
+				<version>${hibernate-version}</version>
 				<!-- xml-apis is not needed for recent java versions -->
 				<exclusions>
 					<exclusion>
@@ -82,16 +84,23 @@
 			</dependency>
 			
 			<dependency>
+				<groupId>org.apache.httpcomponents</groupId>
+				<artifactId>httpclient</artifactId>
+				<version>4.5.1</version>
+			</dependency>
+			
+			<dependency>
+				<groupId>org.apache.sshd</groupId>
+				<artifactId>sshd-core</artifactId>
+				<version>${sshd-core-version}</version>
+			</dependency>
+			
+			<dependency>
 				<groupId>junit</groupId>
 				<artifactId>junit</artifactId>
 				<version>4.12</version>
 			</dependency>
 			
-			<dependency>
-				<groupId>org.apache.httpcomponents</groupId>
-				<artifactId>httpclient</artifactId>
-				<version>4.5.1</version>
-			</dependency>
 		</dependencies>
 	</dependencyManagement>
 	<dependencies>
