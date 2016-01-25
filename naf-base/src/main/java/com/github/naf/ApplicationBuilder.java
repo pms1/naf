@@ -304,6 +304,20 @@ public class ApplicationBuilder {
 	}
 
 	public Application build() {
+
+		String appName = null;
+
+		for (StackTraceElement e : new Throwable().getStackTrace()) {
+			if (e.equals(getClass().getName()))
+				continue;
+			appName = e.getClassName();
+			break;
+		}
+
+		System.err.println("APP NAME " + appName);
+		if (appName == null)
+			throw new Error();
+
 		if (true)
 			try {
 				LogManager.getLogManager()
@@ -426,6 +440,8 @@ public class ApplicationBuilder {
 			weld = weld.addExtension(new ParametersExtension(args));
 		else
 			weld = weld.addExtension(new ParametersExtension());
+
+		weld = weld.addExtension(new ApplicationMetata(appName));
 
 		WeldContainer container = weld.initialize();
 

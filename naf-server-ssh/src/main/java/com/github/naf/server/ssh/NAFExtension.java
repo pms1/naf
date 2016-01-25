@@ -3,7 +3,8 @@ package com.github.naf.server.ssh;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Paths;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
 
 import javax.enterprise.context.spi.CreationalContext;
@@ -26,6 +27,7 @@ import org.jboss.weld.context.unbound.Unbound;
 
 import com.github.naf.spi.AfterBootEvent;
 import com.github.naf.spi.ShutdownEvent;
+import com.github.naf.spi.State;
 
 public class NAFExtension implements com.github.naf.spi.Extension {
 
@@ -72,21 +74,18 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 	private SshServer sshd;
 
 	@SuppressWarnings("serial")
-	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, @Unbound RequestContext requestContext)
-			throws IOException {
+	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, @Unbound RequestContext requestContext,
+			@State Path p) throws IOException {
 
 		SshServer sshd = SshServer.setUpDefaultServer();
 		sshd.setPort(5222);
 
-		AbstractGeneratorHostKeyProvider hostKeyProvider = new SimpleGeneratorHostKeyProvider(
-				Paths.get("c:/temp/ssh/foo"));
+		Files.createDirectories(p);
+		AbstractGeneratorHostKeyProvider hostKeyProvider = new SimpleGeneratorHostKeyProvider(p.resolve("hostkey.ser"));
 		hostKeyProvider.setAlgorithm("RSA");
 		sshd.setKeyPairProvider(hostKeyProvider);
 
 		sshd.setPublickeyAuthenticator(new DefaultAuthorizedKeysAuthenticator(false));
-
-		// sshd.setPasswordAuthenticator(new InAppPasswordAuthenticator());
-		// sshd.setShellFactory(new InAppShellFactory());
 
 		@SuppressWarnings("unchecked")
 		Bean<CommandFactory> cfBean = (Bean<CommandFactory>) bm.resolve(bm.getBeans(CommandFactory.class));
@@ -136,15 +135,9 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 				}
 			});
 
-		System.err.println("C1 " + sshd.getChannelFactories());
-		System.err.println("C1 " + sshd.getCommandFactory());
-		System.err.println("C1 " + sshd.getServiceFactories());
-		System.err.println("C1 " + sshd.getSessionFactory());
-		System.err.println("C1 " + sshd.getShellFactory());
-		System.err.println("C1 " + sshd.getSubsystemFactories());
-
 		sshd.start();
 		this.sshd = sshd;
+
 	}
 
 	@Override
