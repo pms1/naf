@@ -308,13 +308,12 @@ public class ApplicationBuilder {
 		String appName = null;
 
 		for (StackTraceElement e : new Throwable().getStackTrace()) {
-			if (e.equals(getClass().getName()))
+			if (e.getClassName().equals(getClass().getName()))
 				continue;
 			appName = e.getClassName();
 			break;
 		}
 
-		System.err.println("APP NAME " + appName);
 		if (appName == null)
 			throw new Error();
 
