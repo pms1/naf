@@ -275,7 +275,7 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		hostKeyProvider.setAlgorithm("RSA");
 		sshd.setKeyPairProvider(hostKeyProvider);
 
-		sshd.setPublickeyAuthenticator(new DefaultAuthorizedKeysAuthenticator(false));
+		sshd.setPublickeyAuthenticator(new DefaultAuthorizedKeysAuthenticator(true));
 
 		@SuppressWarnings("unchecked")
 		Bean<CommandFactory> cfBean = (Bean<CommandFactory>) bm.resolve(bm.getBeans(CommandFactory.class));
@@ -298,22 +298,16 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 					// if (command instanceof FileSystemAware) {
 					// if (command instanceof AsyncCommand) {
 
+					// 1 explicit reference for the lifecycle of the command
+					// itself
 					e.references.incrementAndGet();
 
 					return new ForwardingCommand(commandInstance) {
 						public void destroy() {
-							// destroy is called when the channel to the client
-							// is closed. ssh does this in a worker thread, so
-							// we have to explicitly do an attach here
-
+							// remove reference of command lifecycle
 							e.references.decrementAndGet();
 
-							try {
-								super.destroy();
-							} finally {
-								// cfBean.destroy(instance, context);
-								// context.release();
-							}
+							super.destroy();
 						};
 					};
 				}
@@ -349,19 +343,15 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 
 		sshd.start();
 		this.sshd = sshd;
-
 	}
 
 	@Override
 	public void join() {
-
 		Object o = new Object();
 		synchronized (o) {
 			try {
 				o.wait();
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 		}
 
