@@ -16,6 +16,12 @@
 			<artifactId>naf-base</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+		
+		<dependency>
+			<groupId>com.github.naf</groupId>
+			<artifactId>naf-server</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.apache.sshd</groupId>
