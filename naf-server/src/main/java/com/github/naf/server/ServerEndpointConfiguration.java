@@ -1,4 +1,4 @@
-package com.github.naf.server.servlet;
+package com.github.naf.server;
 
 import java.net.InetAddress;
 

@@ -61,7 +61,8 @@ public class CustomScopeExtension implements Extension {
 		@Override
 		public void close() {
 			System.err.println("CSE close");
-			context.deactivate();
+			if (context.isActive())
+				context.deactivate();
 			context.dissociate(session);
 		}
 

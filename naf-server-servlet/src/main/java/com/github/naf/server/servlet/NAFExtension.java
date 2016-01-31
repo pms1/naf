@@ -3,6 +3,7 @@ package com.github.naf.server.servlet;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Objects;
 
 import javax.enterprise.event.Event;
 import javax.enterprise.event.Observes;
@@ -16,18 +17,20 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.jboss.weld.environment.servlet.Listener;
 
+import com.github.naf.server.ServerEndpointConfiguration;
 import com.github.naf.spi.AfterBootEvent;
 import com.github.naf.spi.ShutdownEvent;
 
 public class NAFExtension implements com.github.naf.spi.Extension {
 	private Server jettyServer;
 
-	private ServerEndpointConfiguration config = new ServerEndpointConfiguration();
+	private ServerEndpointConfiguration endpoint = new ServerEndpointConfiguration();
 
 	@Override
 	public boolean with(Object o) {
-		if (o instanceof ServerEndpointConfiguration) {
-			this.config = (ServerEndpointConfiguration) o;
+		if (o instanceof ServletServerConfiguration) {
+			this.endpoint = ((ServletServerConfiguration) o).endpoint;
+			Objects.requireNonNull(this.endpoint);
 			return true;
 		}
 		return false;
@@ -68,7 +71,7 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
 		context.setContextPath(contextPath);
 
-		jettyServer = new Server(new InetSocketAddress(config.getAddress(), config.getPort()));
+		jettyServer = new Server(new InetSocketAddress(endpoint.getAddress(), endpoint.getPort()));
 		jettyServer.setHandler(context);
 		context.addEventListener(Listener.using(bm));
 
