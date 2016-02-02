@@ -15,8 +15,8 @@ import org.apache.sshd.server.CommandFactory;
 import org.apache.sshd.server.Environment;
 import org.apache.sshd.server.ExitCallback;
 
-import com.github.naf.server.ssh.NAFExtension.SshUtil;
-import com.github.naf.server.ssh.NAFExtension.Token;
+import com.github.naf.server.ssh.CommandRequestScopeBinder;
+import com.github.naf.server.ssh.CommandRequestScopeBinding;
 
 public class SampleCommandFactory implements CommandFactory {
 
@@ -30,8 +30,6 @@ public class SampleCommandFactory implements CommandFactory {
 		@PreDestroy
 		void pd() {
 			System.err.println("DEPENDENT BEAN " + this + " PreDestory");
-			if (true)
-				new Throwable().printStackTrace();
 		}
 	}
 
@@ -55,7 +53,7 @@ public class SampleCommandFactory implements CommandFactory {
 	RequestScopedBean b;
 
 	@Inject
-	SshUtil tool;
+	CommandRequestScopeBinder tool;
 
 	@Override
 	public Command createCommand(String command) {
@@ -112,7 +110,7 @@ public class SampleCommandFactory implements CommandFactory {
 
 						System.err.println(this + " run " + Thread.currentThread());
 
-						try (Token assosiate = tool.associate(t)) {
+						try (CommandRequestScopeBinding assosiate = tool.associate(t)) {
 
 							System.err.println(this + " run " + s + " " + s.getClass());
 							System.err.println(this + " run " + b + " " + b.getClass());
@@ -147,7 +145,7 @@ public class SampleCommandFactory implements CommandFactory {
 
 						}
 
-						try (Token assosiate = tool.associate(t)) {
+						try (CommandRequestScopeBinding assosiate = tool.associate(t)) {
 
 						}
 					}

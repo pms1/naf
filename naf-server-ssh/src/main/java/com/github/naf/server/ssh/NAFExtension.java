@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.enterprise.context.Dependent;
 import javax.enterprise.context.RequestScoped;
 import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.event.Observes;
@@ -20,7 +19,6 @@ import javax.enterprise.inject.spi.AfterBeanDiscovery;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.util.TypeLiteral;
-import javax.inject.Inject;
 
 import org.apache.sshd.common.Factory;
 import org.apache.sshd.server.Command;
@@ -36,8 +34,6 @@ import org.jboss.weld.context.AbstractBoundContext;
 import org.jboss.weld.context.beanstore.MapBeanStore;
 import org.jboss.weld.context.beanstore.NamingScheme;
 import org.jboss.weld.context.beanstore.SimpleNamingScheme;
-import org.jboss.weld.context.bound.Bound;
-import org.jboss.weld.context.bound.BoundRequestContext;
 import org.jboss.weld.context.cache.RequestScopedCache;
 
 import com.github.naf.server.ServerEndpointConfiguration;
@@ -58,42 +54,42 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 
 		@Override
 		public void setInputStream(InputStream in) {
-			try (Token t = ass(delegate)) {
+			try (CommandRequestScopeBinding t = associate(delegate)) {
 				delegate.setInputStream(in);
 			}
 		}
 
 		@Override
 		public void setOutputStream(OutputStream out) {
-			try (Token t = ass(delegate)) {
+			try (CommandRequestScopeBinding t = associate(delegate)) {
 				delegate.setOutputStream(out);
 			}
 		}
 
 		@Override
 		public void setErrorStream(OutputStream err) {
-			try (Token t = ass(delegate)) {
+			try (CommandRequestScopeBinding t = associate(delegate)) {
 				delegate.setErrorStream(err);
 			}
 		}
 
 		@Override
 		public void setExitCallback(ExitCallback callback) {
-			try (Token t = ass(delegate)) {
+			try (CommandRequestScopeBinding t = associate(delegate)) {
 				delegate.setExitCallback(callback);
 			}
 		}
 
 		@Override
 		public void start(Environment env) throws IOException {
-			try (Token t = ass(delegate)) {
+			try (CommandRequestScopeBinding t = associate(delegate)) {
 				delegate.start(env);
 			}
 		}
 
 		@Override
 		public void destroy() {
-			try (Token t = ass(delegate)) {
+			try (CommandRequestScopeBinding t = associate(delegate)) {
 				delegate.destroy();
 			}
 		}
@@ -116,8 +112,8 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		return false;
 	}
 
-	static class E {
-		E(MyRequestContext requestContext, Map<String, Object> storage) {
+	static class CommandContext {
+		CommandContext(MyRequestContext requestContext, Map<String, Object> storage) {
 			Objects.requireNonNull(requestContext);
 			Objects.requireNonNull(storage);
 			this.requestContext = requestContext;
@@ -129,21 +125,18 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		final AtomicInteger references = new AtomicInteger();
 		final ThreadLocal<AtomicInteger> localReferences = ThreadLocal.withInitial(AtomicInteger::new);
 
-		public Token attach() {
+		public CommandRequestScopeBinding attach() {
 			requestContext.associate(storage);
 			requestContext.activate();
 
 			references.incrementAndGet();
 			localReferences.get().incrementAndGet();
-			System.err.println("INC " + references.get() + " " + localReferences.get() + " " + Thread.currentThread());
 
-			return new Token(this);
+			return new CommandRequestScopeBinding(this);
 		}
 
 		public void detach() {
 			int total = references.decrementAndGet();
-
-			System.err.println("DEC " + total + " " + localReferences.get() + " " + Thread.currentThread());
 
 			if (total == 0)
 				requestContext.invalidate();
@@ -164,7 +157,7 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		}
 	}
 
-	private Map<Command, E> commandContexts = new HashMap<>();
+	private Map<Command, CommandContext> commandContexts = new HashMap<>();
 
 	private MyRequestContext requestContext;
 
@@ -180,15 +173,6 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		}
 
 		private final NamingScheme namingScheme = new SimpleNamingScheme("");
-
-		boolean associate2(Map<String, Object> storage) {
-			if (getBeanStore() == storage)
-				return true;
-			boolean ok = associate(storage);
-			if (!ok)
-				throw new IllegalStateException();
-			return false;
-		}
 
 		@Override
 		public boolean associate(Map<String, Object> storage) {
@@ -224,36 +208,15 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 
 	}
 
-	E getCommandContext(Command t) {
+	private CommandContext getCommandContext(Command t) {
 		return commandContexts.get(t);
 	}
 
-	public static class Token implements AutoCloseable {
-		final E e;
-
-		Token(E e) {
-			Objects.requireNonNull(e);
-			this.e = e;
-		}
-
-		public void close() {
-			e.detach();
-		}
-	}
-
-	Token ass(Command t) {
-		return getCommandContext(t).attach();
-	}
-
-	@Dependent
-	public static class SshUtil {
-		@Inject
-		NAFExtension e;
-
-		public Token associate(Command t) {
-			return e.ass(t);
-		}
-
+	CommandRequestScopeBinding associate(Command t) {
+		CommandContext commandContext = getCommandContext(t);
+		if (commandContext == null)
+			throw new IllegalStateException("No RequestScope for command " + t + ".");
+		return commandContext.attach();
 	}
 
 	public void registerContext(@Observes final AfterBeanDiscovery event) {
@@ -261,10 +224,9 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 	}
 
 	@SuppressWarnings("serial")
-	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, @Bound BoundRequestContext requestContextXX,
-			@State Path p) throws IOException {
-
+	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, @State Path p) throws IOException {
 		Objects.requireNonNull(endpoint);
+
 		SshServer sshd = SshServer.setUpDefaultServer();
 		if (endpoint.getAddress() != null)
 			sshd.setHost(endpoint.getAddress().getHostAddress());
@@ -282,8 +244,8 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		if (cfBean != null)
 			sshd.setCommandFactory((command) -> {
 				Map<String, Object> storage = new HashMap<>();
-				E e = new E(requestContext, storage);
-				try (Token t = e.attach()) {
+				CommandContext e = new CommandContext(requestContext, storage);
+				try (CommandRequestScopeBinding t = e.attach()) {
 					CreationalContext<CommandFactory> context = bm.createCreationalContext(cfBean);
 					e.onDestroy(() -> context.release());
 					CommandFactory instance = cfBean.create(context);
@@ -292,13 +254,14 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 					Command commandInstance = instance.createCommand(command);
 
 					commandContexts.put(commandInstance, e);
+					e.onDestroy(() -> commandContexts.remove(commandInstance));
 
 					// if (command instanceof SessionAware) {
 					// if (command instanceof ChannelSessionAware) {
 					// if (command instanceof FileSystemAware) {
 					// if (command instanceof AsyncCommand) {
 
-					// 1 explicit reference for the lifecycle of the command
+					// explicit reference for the lifecycle of the command
 					// itself
 					e.references.incrementAndGet();
 

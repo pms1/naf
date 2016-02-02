@@ -15,5 +15,16 @@
 			<artifactId>naf-server-ssh</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+		
+		<dependency>
+	<groupId>org.bouncycastle</groupId>
+	<artifactId>bcprov-jdk15on</artifactId>
+	<version>1.53</version>
+</dependency>
+		<dependency>
+  <groupId>com.github.fommil</groupId>
+  <artifactId>openssh</artifactId>
+  <version>1.0</version>
+</dependency>
 	</dependencies>
 </project>

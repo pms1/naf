@@ -13,4 +13,8 @@ public class SshServerConfiguration {
 		this.endpoint = endpoint;
 		return this;
 	}
+
+	public ServerEndpointConfiguration getEndpoint() {
+		return endpoint;
+	}
 }

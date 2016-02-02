@@ -1,6 +1,11 @@
-package com.github.naf.samples.server.ssh;
+package com.github.naf.server.ssh.test;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -12,7 +17,8 @@ import org.apache.sshd.client.channel.ClientChannel;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.common.config.keys.PublicKeyEntry;
 import org.apache.sshd.common.util.io.NoCloseInputStream;
-import org.apache.sshd.common.util.io.NoCloseOutputStream;
+import org.hamcrest.collection.IsIterableContainingInAnyOrder;
+import org.junit.Test;
 
 import com.github.fommil.ssh.SshRsaCrypto;
 import com.github.naf.Application;
@@ -20,16 +26,27 @@ import com.github.naf.ApplicationBuilder;
 import com.github.naf.server.ServerEndpointConfiguration;
 import com.github.naf.server.ssh.SshServerConfiguration;
 
-public class SshServerMain {
+public class SshServerTest {
+
+	static final int port;
+
+	static {
+		try (ServerSocket s = new ServerSocket(0)) {
+			port = s.getLocalPort();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
 	static SshServerConfiguration config = new SshServerConfiguration()
-			.withEndpoint(new ServerEndpointConfiguration().withPort(2223));
+			.withEndpoint(new ServerEndpointConfiguration().withPort(port));
 
-	public static void main(String[] args) throws InterruptedException, IOException, Throwable {
+	@Test
+	public void injection() throws InterruptedException, IOException, Throwable {
+		ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+		ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+
 		try (Application a = new ApplicationBuilder().with(config).build()) {
-
-			// SshClient client = new SshClient();
-			// client.connect("Mirko", "localhost",
-			// config.getEndpoint().getPort());
 
 			try (SshClient client = SshClient.setUpDefaultClient()) {
 				client.start();
@@ -55,26 +72,36 @@ public class SshServerMain {
 
 					try (ClientChannel channel = session.createChannel("exec", "foo")) {
 						channel.setIn(new NoCloseInputStream(System.in));
-						channel.setOut(new NoCloseOutputStream(System.out));
-						channel.setErr(new NoCloseOutputStream(System.err));
+						channel.setOut(stdout);
+						channel.setErr(stderr);
 						channel.open();
 						channel.waitFor(ClientChannel.CLOSED, 0);
 					} finally {
 						session.close(false);
 					}
+
 				} finally {
 					client.stop();
 				}
+
+				while (!TestCommandFactory.sync.get())
+					synchronized (TestCommandFactory.sync) {
+						TestCommandFactory.sync.wait();
+					}
 			}
-
-			System.err.println("WAIT");
-			Thread.sleep(100 * 1000);
-			System.err.println("done");
-
-			Thread.getAllStackTraces().keySet().forEach(System.err::println);
 		}
-		System.err.println("done2");
 
-		Thread.getAllStackTraces().keySet().forEach(System.err::println);
+		assertThat(stdout.toByteArray(), equalTo(TestCommandFactory.testOutputStdout));
+		assertThat(stderr.toByteArray(), equalTo(TestCommandFactory.testOutputStderr));
+
+		assertThat(TestCommandFactory.called,
+				IsIterableContainingInAnyOrder.containsInAnyOrder("dependent-post-construct",
+						"command-factory-post-construct", "factory-create-command", "command-start",
+						"request-post-construct", "request-called-command-start", "command-thread-run",
+						"command-thread-run-before-associate-fail", "request-called-command-before-send",
+						"request-called-command-before-wait-after-send", "command-destroy",
+						"request-called-command-after-wait-after-send", "request-pre-destroy",
+						"command-factory-pre-destroy", "dependent-pre-destroy", "dependent-pre-destroy",
+						"command-thread-run-after-associate-fail", "command-thread-run-re-associate-fail"));
 	}
 }
