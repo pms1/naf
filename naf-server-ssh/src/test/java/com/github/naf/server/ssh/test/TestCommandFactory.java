@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.ContextNotActiveException;
 import javax.enterprise.context.Dependent;
 import javax.enterprise.context.RequestScoped;
@@ -23,6 +24,7 @@ import org.apache.sshd.server.ExitCallback;
 import com.github.naf.server.ssh.CommandRequestScopeBinder;
 import com.github.naf.server.ssh.CommandRequestScopeBinding;
 
+@ApplicationScoped
 public class TestCommandFactory implements CommandFactory {
 
 	static List<String> called = Collections.synchronizedList(new LinkedList<>());
