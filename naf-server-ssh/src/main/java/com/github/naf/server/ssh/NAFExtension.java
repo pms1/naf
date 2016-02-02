@@ -10,7 +10,9 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import javax.enterprise.context.RequestScoped;
 import javax.enterprise.context.spi.CreationalContext;
@@ -41,6 +43,7 @@ import com.github.naf.spi.AfterBootEvent;
 import com.github.naf.spi.ShutdownEvent;
 import com.github.naf.spi.State;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.MapMaker;
 
 public class NAFExtension implements com.github.naf.spi.Extension {
 
@@ -157,7 +160,7 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		}
 	}
 
-	private Map<Command, CommandContext> commandContexts = new HashMap<>();
+	private Map<Command, Optional<CommandContext>> commandContexts = new MapMaker().weakKeys().makeMap();
 
 	private MyRequestContext requestContext;
 
@@ -208,23 +211,57 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 
 	}
 
-	private CommandContext getCommandContext(Command t) {
-		return commandContexts.get(t);
-	}
-
 	CommandRequestScopeBinding associate(Command t) {
-		CommandContext commandContext = getCommandContext(t);
-		if (commandContext == null)
-			throw new IllegalStateException("No RequestScope for command " + t + ".");
-		return commandContext.attach();
+		Optional<CommandContext> optional = commandContexts.get(t);
+		if (optional == null)
+			throw new IllegalArgumentException("Command was not created through this ssh server");
+		if (!optional.isPresent())
+			throw new IllegalStateException("RequestScope for command " + t + " is already destroyed.");
+
+		return optional.get().attach();
 	}
 
-	public void registerContext(@Observes final AfterBeanDiscovery event) {
+	void registerContext(@Observes final AfterBeanDiscovery event) {
 		event.addContext(requestContext = new MyRequestContext());
 	}
 
+	private <T> Command createCommandProxy(BeanManager bm, Bean<T> bean, Function<T, Command> f) {
+		Map<String, Object> storage = new HashMap<>();
+		CommandContext e = new CommandContext(requestContext, storage);
+		try (CommandRequestScopeBinding t = e.attach()) {
+			CreationalContext<T> context = bm.createCreationalContext(bean);
+			e.onDestroy(() -> context.release());
+			T instance = bean.create(context);
+			e.onDestroy(() -> bean.destroy(instance, context));
+
+			Command commandInstance = f.apply(instance);
+
+			commandContexts.put(commandInstance, Optional.of(e));
+			e.onDestroy(() -> commandContexts.put(commandInstance, Optional.empty()));
+
+			// if (command instanceof SessionAware) {
+			// if (command instanceof ChannelSessionAware) {
+			// if (command instanceof FileSystemAware) {
+			// if (command instanceof AsyncCommand) {
+
+			// explicit reference for the lifecycle of the command
+			// itself
+			e.references.incrementAndGet();
+
+			return new ForwardingCommand(commandInstance) {
+				public void destroy() {
+					// remove reference of command lifecycle
+					e.references.decrementAndGet();
+
+					super.destroy();
+				};
+			};
+		}
+	}
+
 	@SuppressWarnings("serial")
-	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, @State Path p) throws IOException {
+	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, @State Path stateDirectory)
+			throws IOException {
 		Objects.requireNonNull(endpoint);
 
 		SshServer sshd = SshServer.setUpDefaultServer();
@@ -232,8 +269,9 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 			sshd.setHost(endpoint.getAddress().getHostAddress());
 		sshd.setPort(endpoint.getPort());
 
-		Files.createDirectories(p);
-		AbstractGeneratorHostKeyProvider hostKeyProvider = new SimpleGeneratorHostKeyProvider(p.resolve("hostkey.ser"));
+		Files.createDirectories(stateDirectory);
+		AbstractGeneratorHostKeyProvider hostKeyProvider = new SimpleGeneratorHostKeyProvider(
+				stateDirectory.resolve("hostkey.ser"));
 		hostKeyProvider.setAlgorithm("RSA");
 		sshd.setKeyPairProvider(hostKeyProvider);
 
@@ -242,67 +280,15 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		@SuppressWarnings("unchecked")
 		Bean<CommandFactory> cfBean = (Bean<CommandFactory>) bm.resolve(bm.getBeans(CommandFactory.class));
 		if (cfBean != null)
-			sshd.setCommandFactory((command) -> {
-				Map<String, Object> storage = new HashMap<>();
-				CommandContext e = new CommandContext(requestContext, storage);
-				try (CommandRequestScopeBinding t = e.attach()) {
-					CreationalContext<CommandFactory> context = bm.createCreationalContext(cfBean);
-					e.onDestroy(() -> context.release());
-					CommandFactory instance = cfBean.create(context);
-					e.onDestroy(() -> cfBean.destroy(instance, context));
-
-					Command commandInstance = instance.createCommand(command);
-
-					commandContexts.put(commandInstance, e);
-					e.onDestroy(() -> commandContexts.remove(commandInstance));
-
-					// if (command instanceof SessionAware) {
-					// if (command instanceof ChannelSessionAware) {
-					// if (command instanceof FileSystemAware) {
-					// if (command instanceof AsyncCommand) {
-
-					// explicit reference for the lifecycle of the command
-					// itself
-					e.references.incrementAndGet();
-
-					return new ForwardingCommand(commandInstance) {
-						public void destroy() {
-							// remove reference of command lifecycle
-							e.references.decrementAndGet();
-
-							super.destroy();
-						};
-					};
-				}
-			});
+			sshd.setCommandFactory((command) -> createCommandProxy(bm, cfBean,
+					commandFactory -> commandFactory.createCommand(command)));
 
 		@SuppressWarnings("unchecked")
 		Bean<Factory<Command>> shellBean = (Bean<Factory<Command>>) bm
 				.resolve(bm.getBeans(new TypeLiteral<Factory<Command>>() {
 				}.getType()));
 		if (shellBean != null)
-			sshd.setShellFactory(() ->
-
-			{
-				requestContext.activate();
-				try {
-					CreationalContext<Factory<Command>> context = bm.createCreationalContext(shellBean);
-					Factory<Command> instance = shellBean.create(context);
-					return new ForwardingCommand(instance.create()) {
-						public void destroy() {
-							try {
-								super.destroy();
-							} finally {
-								shellBean.destroy(instance, context);
-								context.release();
-								requestContext.invalidate();
-							}
-						};
-					};
-				} finally {
-					requestContext.deactivate();
-				}
-			});
+			sshd.setShellFactory(() -> createCommandProxy(bm, shellBean, Factory::create));
 
 		sshd.start();
 		this.sshd = sshd;
