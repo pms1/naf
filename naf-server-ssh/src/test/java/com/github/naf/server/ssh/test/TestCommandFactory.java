@@ -40,6 +40,20 @@ public class TestCommandFactory implements CommandFactory {
 		}
 	}
 
+	@Dependent
+	static class DependentBean2 {
+		@PostConstruct
+		void pc() {
+			called.add("dependent2-post-construct");
+		}
+
+		@PreDestroy
+		void pd() {
+			called.add("dependent2-pre-destroy");
+			new Throwable().printStackTrace();
+		}
+	}
+
 	@RequestScoped
 	static class RequestScopedBean {
 		@PostConstruct
@@ -57,11 +71,28 @@ public class TestCommandFactory implements CommandFactory {
 		}
 	}
 
-	@Inject
-	DependentBean s;
+	@RequestScoped
+	static class RequestScopedBean2 {
+		@PostConstruct
+		void pc() {
+			called.add("request2-post-construct");
+		}
+
+		@PreDestroy
+		void pd() {
+			called.add("request2-pre-destroy");
+		}
+
+		void called(String text) {
+			called.add("request2-called-" + text);
+		}
+	}
 
 	@Inject
-	RequestScopedBean b;
+	DependentBean dcf;
+
+	@Inject
+	RequestScopedBean rcf;
 
 	@Inject
 	CommandRequestScopeBinder tool;
@@ -101,11 +132,18 @@ public class TestCommandFactory implements CommandFactory {
 				ec = callback;
 			}
 
+			@Inject
+			DependentBean2 dc;
+
+			@Inject
+			RequestScopedBean2 rc;
+
 			@Override
 			public void start(Environment env) throws IOException {
 
 				called.add("command-start");
-				b.called("command-start");
+				rcf.called("command-start");
+				rc.called("rc-command-start");
 				Command t = this;
 
 				new Thread() {
@@ -115,15 +153,21 @@ public class TestCommandFactory implements CommandFactory {
 						called.add("command-thread-run");
 
 						try {
-							b.called("command-thread-run-before-associate-ok");
+							rcf.called("command-thread-run-before-associate-ok");
 						} catch (ContextNotActiveException e) {
 							called.add("command-thread-run-before-associate-fail");
 						}
 
+						try {
+							rc.called("rc-command-thread-run-before-associate-ok");
+						} catch (ContextNotActiveException e) {
+							called.add("rc-command-thread-run-before-associate-fail");
+						}
+
 						try (CommandRequestScopeBinding assosiate = tool.associate(t)) {
 
-							b.called("command-before-send");
-
+							rcf.called("command-before-send");
+							rc.called("rc-command-before-send");
 							try {
 								stdoutStream.write(testOutputStdout);
 								stdoutStream.flush();
@@ -135,18 +179,18 @@ public class TestCommandFactory implements CommandFactory {
 								ec.onExit(0, "ok");
 							}
 
-							b.called("command-before-wait-after-send");
+							rcf.called("command-before-wait-after-send");
 
 							try {
 								Thread.sleep(2000);
 							} catch (Throwable e) {
 							}
 
-							b.called("command-after-wait-after-send");
+							rcf.called("command-after-wait-after-send");
 						}
 
 						try {
-							b.called("command-thread-run-after-associate-ok");
+							rcf.called("command-thread-run-after-associate-ok");
 						} catch (ContextNotActiveException e) {
 							called.add("command-thread-run-after-associate-fail");
 						}

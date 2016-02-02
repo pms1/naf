@@ -94,14 +94,20 @@ public class SshServerTest {
 		assertThat(stdout.toByteArray(), equalTo(TestCommandFactory.testOutputStdout));
 		assertThat(stderr.toByteArray(), equalTo(TestCommandFactory.testOutputStderr));
 
-		assertThat(TestCommandFactory.called,
-				IsIterableContainingInAnyOrder.containsInAnyOrder("dependent-post-construct",
-						"command-factory-post-construct", "factory-create-command", "command-start",
-						"request-post-construct", "request-called-command-start", "command-thread-run",
-						"command-thread-run-before-associate-fail", "request-called-command-before-send",
-						"request-called-command-before-wait-after-send", "command-destroy",
-						"request-called-command-after-wait-after-send", "request-pre-destroy",
-						"command-factory-pre-destroy", "dependent-pre-destroy", "dependent-pre-destroy",
-						"command-thread-run-after-associate-fail", "command-thread-run-re-associate-fail"));
+		TestCommandFactory.called.forEach(System.out::println);
+
+		assertThat(TestCommandFactory.called, IsIterableContainingInAnyOrder.containsInAnyOrder(
+				"dependent-post-construct", "command-factory-post-construct", "factory-create-command", "command-start",
+				"request-post-construct", "request-called-command-start", "command-thread-run",
+				"command-thread-run-before-associate-fail", "request-called-command-before-send",
+				"request-called-command-before-wait-after-send", "command-destroy",
+				"request-called-command-after-wait-after-send", "request-pre-destroy", "command-factory-pre-destroy",
+				"dependent-pre-destroy", /* "dependent-pre-destroy", */ "command-thread-run-after-associate-fail",
+				"command-thread-run-re-associate-fail", "rc-command-thread-run-before-associate-fail", //
+				//
+				"dependent2-post-construct", "dependent2-pre-destroy",
+				//
+				"request2-post-construct", "request2-called-rc-command-start", "request2-called-rc-command-before-send",
+				"request2-pre-destroy"));
 	}
 }

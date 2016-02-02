@@ -1,9 +1,12 @@
 package com.github.naf.server.ssh;
 
+import static org.jboss.weld.util.cache.LoadingCacheUtils.getCastCacheValue;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -18,8 +21,10 @@ import javax.enterprise.context.RequestScoped;
 import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.AfterBeanDiscovery;
+import javax.enterprise.inject.spi.AnnotatedType;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
+import javax.enterprise.inject.spi.InjectionTarget;
 import javax.enterprise.util.TypeLiteral;
 
 import org.apache.sshd.common.Factory;
@@ -37,12 +42,16 @@ import org.jboss.weld.context.beanstore.MapBeanStore;
 import org.jboss.weld.context.beanstore.NamingScheme;
 import org.jboss.weld.context.beanstore.SimpleNamingScheme;
 import org.jboss.weld.context.cache.RequestScopedCache;
+import org.jboss.weld.manager.api.WeldManager;
 
 import com.github.naf.server.ServerEndpointConfiguration;
 import com.github.naf.spi.AfterBootEvent;
 import com.github.naf.spi.ShutdownEvent;
 import com.github.naf.spi.State;
 import com.google.common.base.Preconditions;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.MapMaker;
 
 public class NAFExtension implements com.github.naf.spi.Extension {
@@ -160,7 +169,7 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		}
 	}
 
-	private Map<Command, Optional<CommandContext>> commandContexts = new MapMaker().weakKeys().makeMap();
+	private final Map<Command, Optional<CommandContext>> commandContexts = new MapMaker().weakKeys().makeMap();
 
 	private MyRequestContext requestContext;
 
@@ -230,7 +239,10 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		CommandContext e = new CommandContext(requestContext, storage);
 		try (CommandRequestScopeBinding t = e.attach()) {
 			CreationalContext<T> context = bm.createCreationalContext(bean);
-			e.onDestroy(() -> context.release());
+			// If this is called, @Dependent beans get called twice on
+			// PreDestroy.
+			// If it is not called, everything seems to look fine
+			// e.onDestroy(() -> context.release());
 			T instance = bean.create(context);
 			e.onDestroy(() -> bean.destroy(instance, context));
 
@@ -239,6 +251,18 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 			commandContexts.put(commandInstance, Optional.of(e));
 			e.onDestroy(() -> commandContexts.put(commandInstance, Optional.empty()));
 
+			// perform injection on created command
+			final InjectionTarget<Object> it = getCastCacheValue(cache, commandInstance.getClass());
+			CreationalContext<Object> cc = manager.createCreationalContext(null);
+			it.inject(commandInstance, cc);
+			e.onDestroy(() -> {
+				final InjectionTarget<Object> it1 = getCastCacheValue(cache, commandInstance.getClass());
+				it1.dispose(commandInstance);
+				cc.release();
+			});
+
+			// FIXME: create proxy that forwards/implements additional
+			// interfaces for command
 			// if (command instanceof SessionAware) {
 			// if (command instanceof ChannelSessionAware) {
 			// if (command instanceof FileSystemAware) {
@@ -260,9 +284,25 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 	}
 
 	@SuppressWarnings("serial")
+	static final Type factoryCommandType = new TypeLiteral<Factory<Command>>() {
+	}.getType();
+
+	private WeldManager manager;
+	private LoadingCache<Class<?>, InjectionTarget<?>> cache;
+
 	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, @State Path stateDirectory)
 			throws IOException {
 		Objects.requireNonNull(endpoint);
+
+		this.manager = (WeldManager) bm;
+		this.cache = CacheBuilder.newBuilder().weakValues().build(new CacheLoader<Class<?>, InjectionTarget<?>>() {
+			@Override
+			public InjectionTarget<?> load(Class<?> key) throws Exception {
+				AnnotatedType<?> type = manager.createAnnotatedType(key);
+				return manager.createInjectionTargetBuilder(type).setResourceInjectionEnabled(false)
+						.setTargetClassLifecycleCallbacksEnabled(false).build();
+			}
+		});
 
 		SshServer sshd = SshServer.setUpDefaultServer();
 		if (endpoint.getAddress() != null)
@@ -284,9 +324,7 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 					commandFactory -> commandFactory.createCommand(command)));
 
 		@SuppressWarnings("unchecked")
-		Bean<Factory<Command>> shellBean = (Bean<Factory<Command>>) bm
-				.resolve(bm.getBeans(new TypeLiteral<Factory<Command>>() {
-				}.getType()));
+		Bean<Factory<Command>> shellBean = (Bean<Factory<Command>>) bm.resolve(bm.getBeans(factoryCommandType));
 		if (shellBean != null)
 			sshd.setShellFactory(() -> createCommandProxy(bm, shellBean, Factory::create));
 
