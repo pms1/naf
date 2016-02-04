@@ -6,11 +6,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -28,14 +31,19 @@ import javax.enterprise.inject.spi.InjectionTarget;
 import javax.enterprise.util.TypeLiteral;
 
 import org.apache.sshd.common.Factory;
+import org.apache.sshd.common.file.FileSystemAware;
+import org.apache.sshd.server.AsyncCommand;
+import org.apache.sshd.server.ChannelSessionAware;
 import org.apache.sshd.server.Command;
 import org.apache.sshd.server.CommandFactory;
 import org.apache.sshd.server.Environment;
 import org.apache.sshd.server.ExitCallback;
+import org.apache.sshd.server.SessionAware;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.config.keys.DefaultAuthorizedKeysAuthenticator;
 import org.apache.sshd.server.keyprovider.AbstractGeneratorHostKeyProvider;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
+import org.apache.sshd.server.session.ServerSession;
 import org.jboss.weld.bootstrap.api.helpers.RegistrySingletonProvider;
 import org.jboss.weld.context.AbstractBoundContext;
 import org.jboss.weld.context.beanstore.MapBeanStore;
@@ -56,7 +64,7 @@ import com.google.common.collect.MapMaker;
 
 public class NAFExtension implements com.github.naf.spi.Extension {
 
-	class ForwardingCommand implements Command {
+	class ForwardingCommand implements Command, SessionAware {
 		Command delegate;
 
 		ForwardingCommand(Command delegate) {
@@ -103,6 +111,13 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		public void destroy() {
 			try (CommandRequestScopeBinding t = associate(delegate)) {
 				delegate.destroy();
+			}
+		}
+
+		@Override
+		public void setSession(ServerSession session) {
+			try (CommandRequestScopeBinding t = associate(delegate)) {
+				((SessionAware) delegate).setSession(session);
 			}
 		}
 
@@ -261,18 +276,14 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 				cc.release();
 			});
 
-			// FIXME: create proxy that forwards/implements additional
-			// interfaces for command
-			// if (command instanceof SessionAware) {
-			// if (command instanceof ChannelSessionAware) {
-			// if (command instanceof FileSystemAware) {
-			// if (command instanceof AsyncCommand) {
+			// Session x;
+			// x.resetIdleTimeout();
 
 			// explicit reference for the lifecycle of the command
 			// itself
 			e.references.incrementAndGet();
 
-			return new ForwardingCommand(commandInstance) {
+			ForwardingCommand cmd = new ForwardingCommand(commandInstance) {
 				public void destroy() {
 					// remove reference of command lifecycle
 					e.references.decrementAndGet();
@@ -280,6 +291,27 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 					super.destroy();
 				};
 			};
+
+			List<Class<?>> interfaces = new LinkedList<>();
+			interfaces.add(Command.class);
+			if (commandInstance instanceof SessionAware)
+				interfaces.add(SessionAware.class);
+			if (commandInstance instanceof ChannelSessionAware)
+				interfaces.add(ChannelSessionAware.class);
+			if (commandInstance instanceof FileSystemAware)
+				interfaces.add(FileSystemAware.class);
+			if (commandInstance instanceof AsyncCommand)
+				interfaces.add(AsyncCommand.class);
+			return (Command) Proxy.newProxyInstance(commandInstance.getClass().getClassLoader(),
+					interfaces.toArray(new Class[0]), (proxy, method, args) -> {
+						try {
+							return method.invoke(cmd, args);
+						} catch (InvocationTargetException e1) {
+							throw e1.getCause();
+						} catch (IllegalAccessException | IllegalArgumentException e1) {
+							throw new Error(e1);
+						}
+					});
 		}
 	}
 

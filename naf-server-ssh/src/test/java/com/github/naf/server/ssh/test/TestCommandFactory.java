@@ -20,6 +20,8 @@ import org.apache.sshd.server.Command;
 import org.apache.sshd.server.CommandFactory;
 import org.apache.sshd.server.Environment;
 import org.apache.sshd.server.ExitCallback;
+import org.apache.sshd.server.SessionAware;
+import org.apache.sshd.server.session.ServerSession;
 
 import com.github.naf.server.ssh.CommandRequestScopeBinder;
 import com.github.naf.server.ssh.CommandRequestScopeBinding;
@@ -102,122 +104,129 @@ public class TestCommandFactory implements CommandFactory {
 	static byte[] testOutputStdout = "stdout\n".getBytes();
 	static byte[] testOutputStderr = "stderr\n".getBytes();
 
+	class TestCommand implements Command, SessionAware {
+
+		@Override
+		public void setInputStream(InputStream in) {
+		}
+
+		OutputStream stdoutStream;
+
+		@Override
+		public void setOutputStream(OutputStream out) {
+			stdoutStream = out;
+		}
+
+		OutputStream stderrStream;
+
+		@Override
+		public void setErrorStream(OutputStream err) {
+			stderrStream = err;
+		}
+
+		private ExitCallback ec;
+
+		@Override
+		public void setExitCallback(ExitCallback callback) {
+			ec = callback;
+		}
+
+		@Inject
+		DependentBean2 dc;
+
+		@Inject
+		RequestScopedBean2 rc;
+
+		@Override
+		public void start(Environment env) throws IOException {
+
+			called.add("command-start");
+			rcf.called("command-start");
+			rc.called("rc-command-start");
+			Command t = this;
+
+			new Thread() {
+				@Override
+				public void run() {
+
+					called.add("command-thread-run");
+
+					try {
+						rcf.called("command-thread-run-before-associate-ok");
+					} catch (ContextNotActiveException e) {
+						called.add("command-thread-run-before-associate-fail");
+					}
+
+					try {
+						rc.called("rc-command-thread-run-before-associate-ok");
+					} catch (ContextNotActiveException e) {
+						called.add("rc-command-thread-run-before-associate-fail");
+					}
+
+					try (CommandRequestScopeBinding assosiate = tool.associate(t)) {
+
+						rcf.called("command-before-send");
+						rc.called("rc-command-before-send");
+						try {
+							stdoutStream.write(testOutputStdout);
+							stdoutStream.flush();
+							stderrStream.write(testOutputStderr);
+							stderrStream.flush();
+						} catch (IOException e) {
+							e.printStackTrace();
+						} finally {
+							ec.onExit(0, "ok");
+						}
+
+						rcf.called("command-before-wait-after-send");
+
+						try {
+							Thread.sleep(2000);
+						} catch (Throwable e) {
+						}
+
+						rcf.called("command-after-wait-after-send");
+					}
+
+					try {
+						rcf.called("command-thread-run-after-associate-ok");
+					} catch (ContextNotActiveException e) {
+						called.add("command-thread-run-after-associate-fail");
+					}
+
+					try (CommandRequestScopeBinding token = tool.associate(t)) {
+						called.add("command-thread-run-re-associate-ok");
+					} catch (Throwable t) {
+						called.add("command-thread-run-re-associate-fail");
+					}
+
+					sync.set(true);
+					synchronized (sync) {
+						sync.notify();
+					}
+				}
+			}.start();
+
+		}
+
+		@Override
+		public void destroy() {
+			called.add("command-destroy");
+		}
+
+		@Override
+		public void setSession(ServerSession session) {
+			called.add("command-set-session");
+		}
+
+	}
+
 	@Override
 	public Command createCommand(String command) {
 
 		called.add("factory-create-command");
 
-		return new Command() {
-
-			@Override
-			public void setInputStream(InputStream in) {
-			}
-
-			OutputStream stdoutStream;
-
-			@Override
-			public void setOutputStream(OutputStream out) {
-				stdoutStream = out;
-			}
-
-			OutputStream stderrStream;
-
-			@Override
-			public void setErrorStream(OutputStream err) {
-				stderrStream = err;
-			}
-
-			private ExitCallback ec;
-
-			@Override
-			public void setExitCallback(ExitCallback callback) {
-				ec = callback;
-			}
-
-			@Inject
-			DependentBean2 dc;
-
-			@Inject
-			RequestScopedBean2 rc;
-
-			@Override
-			public void start(Environment env) throws IOException {
-
-				called.add("command-start");
-				rcf.called("command-start");
-				rc.called("rc-command-start");
-				Command t = this;
-
-				new Thread() {
-					@Override
-					public void run() {
-
-						called.add("command-thread-run");
-
-						try {
-							rcf.called("command-thread-run-before-associate-ok");
-						} catch (ContextNotActiveException e) {
-							called.add("command-thread-run-before-associate-fail");
-						}
-
-						try {
-							rc.called("rc-command-thread-run-before-associate-ok");
-						} catch (ContextNotActiveException e) {
-							called.add("rc-command-thread-run-before-associate-fail");
-						}
-
-						try (CommandRequestScopeBinding assosiate = tool.associate(t)) {
-
-							rcf.called("command-before-send");
-							rc.called("rc-command-before-send");
-							try {
-								stdoutStream.write(testOutputStdout);
-								stdoutStream.flush();
-								stderrStream.write(testOutputStderr);
-								stderrStream.flush();
-							} catch (IOException e) {
-								e.printStackTrace();
-							} finally {
-								ec.onExit(0, "ok");
-							}
-
-							rcf.called("command-before-wait-after-send");
-
-							try {
-								Thread.sleep(2000);
-							} catch (Throwable e) {
-							}
-
-							rcf.called("command-after-wait-after-send");
-						}
-
-						try {
-							rcf.called("command-thread-run-after-associate-ok");
-						} catch (ContextNotActiveException e) {
-							called.add("command-thread-run-after-associate-fail");
-						}
-
-						try (CommandRequestScopeBinding token = tool.associate(t)) {
-							called.add("command-thread-run-re-associate-ok");
-						} catch (Throwable t) {
-							called.add("command-thread-run-re-associate-fail");
-						}
-
-						sync.set(true);
-						synchronized (sync) {
-							sync.notify();
-						}
-					}
-				}.start();
-
-			}
-
-			@Override
-			public void destroy() {
-				called.add("command-destroy");
-			}
-
-		};
+		return new TestCommand();
 	}
 
 	@PostConstruct

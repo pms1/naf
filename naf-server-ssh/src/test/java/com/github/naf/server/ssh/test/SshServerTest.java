@@ -108,6 +108,10 @@ public class SshServerTest {
 				"dependent2-post-construct", "dependent2-pre-destroy",
 				//
 				"request2-post-construct", "request2-called-rc-command-start", "request2-called-rc-command-before-send",
-				"request2-pre-destroy"));
+				"request2-pre-destroy",
+				//
+				"command-set-session"
+		//
+		));
 	}
 }
