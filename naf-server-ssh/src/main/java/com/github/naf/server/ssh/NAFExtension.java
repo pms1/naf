@@ -249,19 +249,17 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		event.addContext(requestContext = new MyRequestContext());
 	}
 
-	private <T> Command createCommandProxy(BeanManager bm, Bean<T> bean, Function<T, Command> f) {
+	private <T> Command createCommandProxy(BeanManager bm, Bean<T> bean, Function<T, Command> create) {
 		Map<String, Object> storage = new HashMap<>();
 		CommandContext e = new CommandContext(requestContext, storage);
 		try (CommandRequestScopeBinding t = e.attach()) {
-			CreationalContext<T> context = bm.createCreationalContext(bean);
-			// If this is called, @Dependent beans get called twice on
-			// PreDestroy.
-			// If it is not called, everything seems to look fine
-			// e.onDestroy(() -> context.release());
-			T instance = bean.create(context);
-			e.onDestroy(() -> bean.destroy(instance, context));
+			// see
+			// http://stackoverflow.com/questions/20048410/canonical-way-to-obtain-cdi-managed-bean-instance-beanmanagergetreference-vs
+			// on why this is the appropriate way
+			@SuppressWarnings("unchecked")
+			T instance = (T) bm.getReference(bean, bean.getBeanClass(), bm.createCreationalContext(bean));
 
-			Command commandInstance = f.apply(instance);
+			Command commandInstance = create.apply(instance);
 
 			commandContexts.put(commandInstance, Optional.of(e));
 			e.onDestroy(() -> commandContexts.put(commandInstance, Optional.empty()));
@@ -276,11 +274,7 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 				cc.release();
 			});
 
-			// Session x;
-			// x.resetIdleTimeout();
-
-			// explicit reference for the lifecycle of the command
-			// itself
+			// explicit reference for the lifecycle of the command itself
 			e.references.incrementAndGet();
 
 			ForwardingCommand cmd = new ForwardingCommand(commandInstance) {
@@ -324,7 +318,8 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 
 	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, @State Path stateDirectory)
 			throws IOException {
-		Objects.requireNonNull(endpoint);
+		if (endpoint == null)
+			return;
 
 		this.manager = (WeldManager) bm;
 		this.cache = CacheBuilder.newBuilder().weakValues().build(new CacheLoader<Class<?>, InjectionTarget<?>>() {
@@ -366,18 +361,18 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 
 	@Override
 	public void join() {
-		Object o = new Object();
-		synchronized (o) {
-			try {
-				o.wait();
-			} catch (InterruptedException e) {
+		if (sshd != null) {
+			Object o = new Object();
+			synchronized (o) {
+				try {
+					o.wait();
+				} catch (InterruptedException e) {
+				}
 			}
 		}
-
 	}
 
 	void shutdown(@Observes ShutdownEvent shutdownEvent) {
-		System.err.println("STOP " + sshd);
 		if (sshd != null)
 			try {
 				sshd.stop();
