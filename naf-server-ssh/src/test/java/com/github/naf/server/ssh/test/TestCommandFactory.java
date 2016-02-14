@@ -14,6 +14,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.ContextNotActiveException;
 import javax.enterprise.context.Dependent;
 import javax.enterprise.context.RequestScoped;
+import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
 import org.apache.sshd.server.Command;
@@ -54,7 +55,6 @@ public class TestCommandFactory implements CommandFactory {
 		@PreDestroy
 		void pd() {
 			called.add("dependent2-pre-destroy");
-			new Throwable().printStackTrace();
 		}
 	}
 
@@ -104,10 +104,14 @@ public class TestCommandFactory implements CommandFactory {
 	static byte[] testOutputStdout = "stdout\n".getBytes();
 	static byte[] testOutputStderr = "stderr\n".getBytes();
 
-	class TestCommand implements Command, SessionAware {
+	@Dependent
+	static class TestCommand implements Command, SessionAware {
+
+		InputStream stdinStream;
 
 		@Override
 		public void setInputStream(InputStream in) {
+			this.stdinStream = in;
 		}
 
 		OutputStream stdoutStream;
@@ -137,17 +141,32 @@ public class TestCommandFactory implements CommandFactory {
 		@Inject
 		RequestScopedBean2 rc;
 
+		void ob(@Observes TestEvent e) {
+			System.err.println("EEE " + e);
+		}
+
+		@Inject
+		RequestScopedBean rcf;
+
+		@Inject
+		CommandRequestScopeBinder tool;
+
 		@Override
 		public void start(Environment env) throws IOException {
 
 			called.add("command-start");
 			rcf.called("command-start");
 			rc.called("rc-command-start");
-			Command t = this;
 
 			new Thread() {
 				@Override
 				public void run() {
+
+					try {
+						int c = stdinStream.read();
+					} catch (IOException e1) {
+						throw new Error(e1);
+					}
 
 					called.add("command-thread-run");
 
@@ -163,7 +182,7 @@ public class TestCommandFactory implements CommandFactory {
 						called.add("rc-command-thread-run-before-associate-fail");
 					}
 
-					try (CommandRequestScopeBinding assosiate = tool.associate(t)) {
+					try (CommandRequestScopeBinding assosiate = tool.associate(TestCommand.this)) {
 
 						rcf.called("command-before-send");
 						rc.called("rc-command-before-send");
@@ -194,7 +213,7 @@ public class TestCommandFactory implements CommandFactory {
 						called.add("command-thread-run-after-associate-fail");
 					}
 
-					try (CommandRequestScopeBinding token = tool.associate(t)) {
+					try (CommandRequestScopeBinding token = tool.associate(TestCommand.this)) {
 						called.add("command-thread-run-re-associate-ok");
 					} catch (Throwable t) {
 						called.add("command-thread-run-re-associate-fail");
@@ -240,4 +259,8 @@ public class TestCommandFactory implements CommandFactory {
 	}
 
 	static AtomicBoolean sync = new AtomicBoolean(false);
+
+	void ob(@Observes TestEvent e) {
+		System.err.println("FFF " + e);
+	}
 }
