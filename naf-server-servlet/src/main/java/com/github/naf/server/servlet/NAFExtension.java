@@ -3,7 +3,6 @@ package com.github.naf.server.servlet;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Objects;
 
 import javax.enterprise.event.Event;
 import javax.enterprise.event.Observes;
@@ -30,7 +29,6 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 	public boolean with(Object o) {
 		if (o instanceof ServletServerConfiguration) {
 			this.endpoint = ((ServletServerConfiguration) o).endpoint;
-			Objects.requireNonNull(this.endpoint);
 			return true;
 		}
 		return false;
@@ -68,6 +66,9 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 	private static final String contextPath = "/";
 
 	void afterBoot(@Observes AfterBootEvent afterBootEvent, BeanManager bm, Event<ServletInitializationEvent> event) {
+		if (endpoint == null)
+			return;
+
 		ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
 		context.setContextPath(contextPath);
 
@@ -86,6 +87,9 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 
 	@Override
 	public void join() {
+		if (jettyServer == null)
+			return;
+
 		try {
 			jettyServer.join();
 		} catch (InterruptedException e) {
