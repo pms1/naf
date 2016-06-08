@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.function.Function;
 import java.util.logging.LogManager;
 
 import javax.ejb.TimerService;
@@ -75,6 +76,10 @@ public class ApplicationBuilder {
 			throw new IllegalArgumentException();
 		with.add(o);
 		return this;
+	}
+
+	public ApplicationBuilder with(Function<ApplicationBuilder, ApplicationBuilder> x) {
+		return x.apply(this);
 	}
 
 	/**
@@ -384,11 +389,18 @@ public class ApplicationBuilder {
 			}
 		}
 
+		for (Extension e : extensions) {
+			e.registerResource(transformedResources::put);
+		}
+
 		ApplicationContext ac = new ApplicationContext() {
 
 			@Override
 			public Object getResource(String id) {
-				return transformedResources.get(id).getValue();
+				Resource r = transformedResources.get(id);
+				if (r == null)
+					return r;
+				return r.getValue();
 			}
 
 		};
