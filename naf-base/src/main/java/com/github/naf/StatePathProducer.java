@@ -24,10 +24,10 @@ public class StatePathProducer {
 	Path create(InjectionPoint p) {
 
 		String os = System.getProperty("os.name");
-		if (os.equals("Windows 7")) {
+		if (os.startsWith("Windows ")) {
 
 		} else {
-			throw new Error();
+			throw new Error("Unhandled \"os.name\": os");
 		}
 
 		String env = System.getenv("LOCALAPPDATA");
