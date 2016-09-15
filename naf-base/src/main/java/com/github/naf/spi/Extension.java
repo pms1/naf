@@ -1,5 +1,7 @@
 package com.github.naf.spi;
 
+import java.util.function.BiConsumer;
+
 import org.jboss.weld.bootstrap.spi.Deployment;
 
 public interface Extension extends javax.enterprise.inject.spi.Extension {
@@ -10,6 +12,10 @@ public interface Extension extends javax.enterprise.inject.spi.Extension {
 
 	default Resource transformResource(Object resource) {
 		return null;
+	}
+
+	default void registerResource(BiConsumer<String, Resource> sink) {
+
 	}
 
 	default void join() {
