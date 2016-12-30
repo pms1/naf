@@ -2,31 +2,26 @@ package com.github.naf.jta.bitronix;
 
 import java.lang.annotation.Annotation;
 
-import javax.enterprise.context.spi.AlterableContext;
-import javax.enterprise.context.spi.Contextual;
-import javax.enterprise.context.spi.CreationalContext;
+import javax.transaction.RollbackException;
 import javax.transaction.Status;
+import javax.transaction.Synchronization;
 import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 import javax.transaction.TransactionScoped;
 
+import org.jboss.weld.bootstrap.api.helpers.RegistrySingletonProvider;
+import org.jboss.weld.context.AbstractContext;
+import org.jboss.weld.context.beanstore.BeanStore;
+import org.jboss.weld.context.beanstore.HashMapBeanStore;
+
 import bitronix.tm.TransactionManagerServices;
 
-public class TransactionContext implements AlterableContext {
-	private final static TransactionManager tm = TransactionManagerServices
-			.getTransactionManager();
+public class TransactionContext extends AbstractContext {
 
-	@Override
-	public boolean isActive() {
+	private final static TransactionManager tm = TransactionManagerServices.getTransactionManager();
 
-		try {
-			return tm.getStatus() == Status.STATUS_ACTIVE;
-		} catch (SystemException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		// TODO Auto-generated method stub
-		return false;
+	public TransactionContext() {
+		super(RegistrySingletonProvider.STATIC_INSTANCE, false);
 	}
 
 	@Override
@@ -35,22 +30,57 @@ public class TransactionContext implements AlterableContext {
 	}
 
 	@Override
-	public <T> T get(Contextual<T> contextual,
-			CreationalContext<T> creationalContext) {
-		T r = contextual.create(creationalContext);
-		System.err.println("R=" + r);
-		return r;
+	protected BeanStore getBeanStore() {
+		BeanStore beanStore = (BeanStore) TransactionManagerServices.getTransactionSynchronizationRegistry()
+				.getResource(this);
+		if (beanStore == null) {
+			beanStore = new HashMapBeanStore();
+			TransactionManagerServices.getTransactionSynchronizationRegistry().putResource(this, beanStore);
+			try {
+				tm.getTransaction().registerSynchronization(sync);
+			} catch (IllegalStateException | RollbackException | SystemException e) {
+				throw new Error(e);
+			}
+		}
+		return beanStore;
 	}
 
 	@Override
-	public <T> T get(Contextual<T> contextual) {
-		return get(contextual, null);
+	public boolean isActive() {
+		try {
+			switch (tm.getStatus()) {
+			case Status.STATUS_ACTIVE:
+			case Status.STATUS_MARKED_ROLLBACK:
+			case Status.STATUS_PREPARED:
+			case Status.STATUS_PREPARING:
+			case Status.STATUS_COMMITTING:
+			case Status.STATUS_ROLLING_BACK:
+				return true;
+			case Status.STATUS_COMMITTED:
+			case Status.STATUS_NO_TRANSACTION:
+			case Status.STATUS_ROLLEDBACK:
+				return false;
+			case Status.STATUS_UNKNOWN:
+			default:
+				throw new Error("unhandled transaction status=" + tm.getStatus());
+			}
+		} catch (SystemException e) {
+			throw new Error("unhandled transaction status", e);
+		}
 	}
 
-	@Override
-	public void destroy(Contextual<?> contextual) {
-		// TODO Auto-generated method stub
+	private Synchronization sync = new Synchronization() {
 
-	}
+		@Override
+		public void beforeCompletion() {
+		}
 
+		@Override
+		public void afterCompletion(int status) {
+			destroy();
+
+			TransactionManagerServices.getTransactionSynchronizationRegistry().putResource(TransactionContext.this,
+					null);
+		}
+	};
 }

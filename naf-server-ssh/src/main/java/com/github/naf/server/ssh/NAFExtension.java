@@ -108,7 +108,7 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 		}
 
 		@Override
-		public void destroy() {
+		public void destroy() throws Exception {
 			try (CommandRequestScopeBinding t = associate(delegate)) {
 				delegate.destroy();
 			}
@@ -278,7 +278,7 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 			e.references.incrementAndGet();
 
 			ForwardingCommand cmd = new ForwardingCommand(commandInstance) {
-				public void destroy() {
+				public void destroy() throws Exception {
 					// remove reference of command lifecycle
 					e.references.decrementAndGet();
 

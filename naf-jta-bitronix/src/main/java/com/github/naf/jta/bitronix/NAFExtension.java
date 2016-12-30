@@ -1,5 +1,11 @@
 package com.github.naf.jta.bitronix;
 
+import javax.enterprise.event.Observes;
+import javax.enterprise.inject.spi.AfterBeanDiscovery;
+import javax.enterprise.inject.spi.BeanManager;
+import javax.enterprise.inject.spi.BeforeBeanDiscovery;
+import javax.transaction.TransactionScoped;
+
 import org.jboss.weld.bootstrap.spi.Deployment;
 import org.jboss.weld.transaction.spi.TransactionServices;
 
@@ -53,5 +59,15 @@ public class NAFExtension implements Extension {
 		deployment.getServices().add(TransactionServices.class, new BitronixTransactionServices());
 
 		return Extension.super.processDeployment(applicationContext, deployment);
+	}
+
+	void reg1(@Observes AfterBeanDiscovery x) {
+		System.err.println("XX " + x);
+		x.addContext(new TransactionContext());
+	}
+
+	public void register(@Observes BeforeBeanDiscovery bbd, BeanManager bm) {
+		System.err.println("XX " + bbd);
+		bbd.addScope(TransactionScoped.class, true, true);
 	}
 }
