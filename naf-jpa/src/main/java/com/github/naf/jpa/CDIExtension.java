@@ -1,10 +1,15 @@
 package com.github.naf.jpa;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.enterprise.event.Observes;
+import javax.enterprise.inject.spi.AfterDeploymentValidation;
+import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -20,6 +25,7 @@ import javax.transaction.RollbackException;
 import javax.transaction.SystemException;
 
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.jpa.event.spi.jpa.ExtendedBeanManager;
 import org.jboss.weld.bootstrap.spi.Deployment;
 import org.jboss.weld.injection.spi.JpaInjectionServices;
 import org.jboss.weld.injection.spi.ResourceReference;
@@ -42,7 +48,36 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 		}
 	}
 
+	void afterDeploymentValidation(@Observes AfterDeploymentValidation ad, BeanManager bm) {
+		ebm.fire(bm);
+	}
+
 	private PersistenceUnitPropertiesPatcher propertiesPatcher = null;
+
+	static class ExtendedBeanManagerImpl implements ExtendedBeanManager {
+
+		private List<LifecycleListener> listeners = new ArrayList<>();
+
+		private BeanManager bm;
+
+		@Override
+		public void registerLifecycleListener(LifecycleListener lifecycleListener) {
+			System.err.println("REGISTER " + lifecycleListener);
+			if (bm == null)
+				listeners.add(lifecycleListener);
+			else
+				lifecycleListener.beanManagerInitialized(bm);
+		}
+
+		void fire(BeanManager bm) {
+			this.bm = bm;
+			listeners.forEach(l -> l.beanManagerInitialized(bm));
+			listeners = null;
+		}
+
+	}
+
+	private ExtendedBeanManagerImpl ebm = new ExtendedBeanManagerImpl();
 
 	@Override
 	public boolean with(Object o) {
@@ -73,20 +108,15 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 							ts.getUserTransaction().begin();
 							doRollback = true;
 
-							if (propertiesPatcher == null) {
-								if (id.properties != null)
-									emf = Persistence.createEntityManagerFactory(id.unitName, id.properties);
-								else
-									emf = Persistence.createEntityManagerFactory(id.unitName);
-							} else {
-								Map<String, String> properties;
+							Map<String, Object> properties = new HashMap<>(
+									id.properties != null ? id.properties : Collections.emptyMap());
 
-								properties = new HashMap<>(
-										id.properties != null ? id.properties : Collections.emptyMap());
+							properties.put("javax.persistence.bean.manager", ebm.bm != null ? ebm.bm : ebm);
+
+							if (propertiesPatcher != null)
 								properties = propertiesPatcher.apply(id.unitName, properties);
 
-								emf = Persistence.createEntityManagerFactory(id.unitName, properties);
-							}
+							emf = Persistence.createEntityManagerFactory(id.unitName, properties);
 							ts.getUserTransaction().commit();
 							doRollback = false;
 						} finally {
@@ -157,7 +187,7 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 					throw new UnsupportedOperationException("not supported (yet)");
 				if (pc.type() == PersistenceContextType.EXTENDED)
 					throw new UnsupportedOperationException("not supported (yet)");
-				Map<String, String> properties = asMap(pc.properties());
+				Map<String, Object> properties = asMap(pc.properties());
 
 				Id id = new Id(pc.unitName(), properties);
 				return new ResourceReferenceFactory<EntityManager>() {
@@ -252,11 +282,11 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 		return com.github.naf.spi.Extension.super.processDeployment(ac, deployment);
 	}
 
-	private static Map<String, String> asMap(PersistenceProperty[] properties) {
+	private static Map<String, Object> asMap(PersistenceProperty[] properties) {
 		if (properties.length == 0)
 			return null;
 
-		Map<String, String> result = new HashMap<>();
+		Map<String, Object> result = new HashMap<>();
 		for (PersistenceProperty p : properties)
 			result.put(p.name(), p.value());
 		return result;
@@ -264,9 +294,9 @@ public class CDIExtension implements com.github.naf.spi.Extension {
 
 	static class Id {
 		final String unitName;
-		final Map<String, String> properties;
+		final Map<String, Object> properties;
 
-		public Id(String unitName, Map<String, String> properties) {
+		public Id(String unitName, Map<String, Object> properties) {
 			this.unitName = unitName;
 			this.properties = properties;
 		}
