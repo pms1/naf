@@ -1,7 +1,5 @@
 package com.github.naf.server.ssh;
 
-import static org.jboss.weld.util.cache.LoadingCacheUtils.getCastCacheValue;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -17,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -265,11 +264,21 @@ public class NAFExtension implements com.github.naf.spi.Extension {
 			e.onDestroy(() -> commandContexts.put(commandInstance, Optional.empty()));
 
 			// perform injection on created command
-			final InjectionTarget<Object> it = getCastCacheValue(cache, commandInstance.getClass());
+			InjectionTarget<Object> it;
+			try {
+				it = (InjectionTarget<Object>) cache.get(commandInstance.getClass());
+			} catch (ExecutionException e2) {
+				throw new RuntimeException(e2);
+			}
 			CreationalContext<Object> cc = manager.createCreationalContext(null);
 			it.inject(commandInstance, cc);
 			e.onDestroy(() -> {
-				final InjectionTarget<Object> it1 = getCastCacheValue(cache, commandInstance.getClass());
+				InjectionTarget<Object> it1;
+				try {
+					it1 = (InjectionTarget<Object>) cache.get(commandInstance.getClass());
+				} catch (ExecutionException e1) {
+					throw new RuntimeException(e1);
+				}
 				it1.dispose(commandInstance);
 				cc.release();
 			});
