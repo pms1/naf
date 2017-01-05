@@ -61,11 +61,12 @@ public class NAFExtension implements Extension {
 		return Extension.super.processDeployment(applicationContext, deployment);
 	}
 
-	void reg1(@Observes AfterBeanDiscovery x) {
-		x.addContext(new TransactionContext());
-	}
-
-	public void register(@Observes BeforeBeanDiscovery bbd, BeanManager bm) {
+	void beforeBeanDiscovery(@Observes BeforeBeanDiscovery bbd, BeanManager bm) {
 		bbd.addScope(TransactionScoped.class, true, true);
 	}
+
+	void afterBeanDiscovery(@Observes AfterBeanDiscovery abd) {
+		abd.addContext(new TransactionContext());
+	}
+
 }
