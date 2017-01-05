@@ -235,6 +235,11 @@ public class NAFExtension implements Extension {
 			return c.isAnnotationPresent(annotationType);
 		}
 
+		@Override
+		public <T extends Annotation> Set<T> getAnnotations(Class<T> annotationType) {
+			return ImmutableSet.copyOf(c.getAnnotationsByType(annotationType));
+		}
+
 	}
 
 	static class AnnotatedParameterImpl<X> extends AnnotatedImpl implements AnnotatedParameter<X> {

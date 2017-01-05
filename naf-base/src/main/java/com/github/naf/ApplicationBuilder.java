@@ -30,6 +30,7 @@ import javax.naming.spi.InitialContextFactoryBuilder;
 import javax.naming.spi.NamingManager;
 
 import org.jboss.weld.bootstrap.api.CDI11Bootstrap;
+import org.jboss.weld.bootstrap.api.helpers.RegistrySingletonProvider;
 import org.jboss.weld.bootstrap.spi.Deployment;
 import org.jboss.weld.ejb.api.SessionObjectReference;
 import org.jboss.weld.ejb.spi.EjbDescriptor;
@@ -41,7 +42,6 @@ import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.injection.spi.ResourceInjectionServices;
 import org.jboss.weld.injection.spi.ResourceReference;
 import org.jboss.weld.injection.spi.ResourceReferenceFactory;
-import org.jboss.weld.manager.BeanManagerImpl;
 import org.jboss.weld.resources.spi.ResourceLoader;
 
 import com.github.naf.spi.ApplicationContext;
@@ -83,9 +83,8 @@ public class ApplicationBuilder {
 	}
 
 	/**
-	 * Make {@code args} available for injection using Weld's {@link Parameters}
-	 * annotation. If this method is not called, {@link Parameters} is not
-	 * available for injection.
+	 * Make {@code args} available for injection using Weld's {@link Parameters} annotation. If this method is not
+	 * called, {@link Parameters} is not available for injection.
 	 * 
 	 * @param args
 	 *            The command line arguments. Must not be {@code null}.
@@ -324,21 +323,21 @@ public class ApplicationBuilder {
 
 		if (true)
 			try {
-				LogManager.getLogManager()
-						.readConfiguration(new ByteArrayInputStream(( //
-								"handlers = java.util.logging.ConsoleHandler\r\n" //
-										//
-										+ "java.util.logging.ConsoleHandler.level = ALL\r\n" //
-										+ ".level = INFO\r\n" //
-										+ "org.hibernate.level = WARNING\r\n" //
-										+ "XXorg.hibernate.level = FINEST\r\n" //
-										+ "XXorg.hibernate.SQL.level = FINEST\r\n" //
-										+ "XXorg.hibernate.integrator.level = FINEST\r\n" //
-										+ "bitronix.tm.level = WARNING\r\n" //
-										+ "org.jboss.weld.level = WARNING\r\n" //
-										+ "org.eclipse.jetty.level = WARNING\r\n" //
-				// + "org.glassfish.jersey.level=FINEST\r\n" //
-										+ "org.glassfish.jersey.server.model.level=WARNING\r\n" //
+				LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(( //
+				"handlers = java.util.logging.ConsoleHandler\r\n" //
+						//
+						+ "java.util.logging.ConsoleHandler.level = ALL\r\n" //
+						+ ".level = INFO\r\n" //
+						+ "org.hibernate.level = WARNING\r\n" //
+						+ "XXorg.hibernate.level = FINEST\r\n" //
+						+ "XXorg.hibernate.SQL.level = FINEST\r\n" //
+						+ "XXorg.hibernate.integrator.level = FINEST\r\n" //
+						+ "bitronix.tm.level = WARNING\r\n" //
+						// + "org.apache.level = FINEST\r\n" //
+						+ "org.jboss.weld.level = WARNING\r\n" //
+						+ "org.eclipse.jetty.level = WARNING\r\n" //
+						// + "org.glassfish.jersey.level=FINEST\r\n" //
+						+ "org.glassfish.jersey.server.model.level=WARNING\r\n" //
 				// + "com.github.naf.jta.level=FINEST\r\n" //
 				// + ".level=FINEST\r\n" //
 				).getBytes()));
@@ -409,7 +408,7 @@ public class ApplicationBuilder {
 
 		ResourceInjectionServicesImpl ris = new ResourceInjectionServicesImpl();
 
-		Weld weld = new Weld() {
+		Weld weld = new Weld(RegistrySingletonProvider.STATIC_INSTANCE) {
 			@Override
 			protected Deployment createDeployment(ResourceLoader resourceLoader, CDI11Bootstrap bootstrap) {
 				Deployment deployment = super.createDeployment(resourceLoader, bootstrap);
@@ -492,10 +491,10 @@ public class ApplicationBuilder {
 
 		}
 
-		BeanManagerImpl bm;
+		BeanManager bm;
 
 		public void setBeanManager(BeanManager beanManager) {
-			bm = (BeanManagerImpl) beanManager;
+			bm = beanManager;
 		}
 
 		@Override

@@ -62,12 +62,10 @@ public class NAFExtension implements Extension {
 	}
 
 	void reg1(@Observes AfterBeanDiscovery x) {
-		System.err.println("XX " + x);
 		x.addContext(new TransactionContext());
 	}
 
 	public void register(@Observes BeforeBeanDiscovery bbd, BeanManager bm) {
-		System.err.println("XX " + bbd);
 		bbd.addScope(TransactionScoped.class, true, true);
 	}
 }
