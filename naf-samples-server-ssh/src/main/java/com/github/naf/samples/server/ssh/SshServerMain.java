@@ -5,10 +5,13 @@ import java.nio.file.Files;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.channel.ClientChannel;
+import org.apache.sshd.client.channel.ClientChannelEvent;
+import org.apache.sshd.client.future.ConnectFuture;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.common.config.keys.PublicKeyEntry;
 import org.apache.sshd.common.util.io.NoCloseInputStream;
@@ -34,11 +37,10 @@ public class SshServerMain {
 			try (SshClient client = SshClient.setUpDefaultClient()) {
 				client.start();
 
-				String privateKeybody = Files
-						.readAllLines(PublicKeyEntry.getDefaultKeysFolder().toPath().resolve("id_rsa")).stream()
-						.collect(Collectors.joining("\n"));
+				String privateKeybody = Files.readAllLines(PublicKeyEntry.getDefaultKeysFolderPath().resolve("id_rsa"))
+						.stream().collect(Collectors.joining("\n"));
 				String publicKeybody = Files
-						.readAllLines(PublicKeyEntry.getDefaultKeysFolder().toPath().resolve("id_rsa.pub")).stream()
+						.readAllLines(PublicKeyEntry.getDefaultKeysFolderPath().resolve("id_rsa.pub")).stream()
 						.collect(Collectors.joining("\n"));
 
 				SshRsaCrypto rsa = new SshRsaCrypto();
@@ -47,9 +49,11 @@ public class SshServerMain {
 
 				KeyPair keyPair = new KeyPair(publicKey, privateKey);
 
-				try (ClientSession session = client
-						.connect(System.getProperty("user.name"), "localhost", config.getEndpoint().getPort()).await()
-						.getSession()) {
+				ConnectFuture connect = client.connect(System.getProperty("user.name"), "localhost",
+						config.getEndpoint().getPort());
+				connect.await();
+
+				try (ClientSession session = connect.getSession()) {
 					session.addPublicKeyIdentity(keyPair);
 					session.auth().verify();
 
@@ -58,7 +62,7 @@ public class SshServerMain {
 						channel.setOut(new NoCloseOutputStream(System.out));
 						channel.setErr(new NoCloseOutputStream(System.err));
 						channel.open();
-						channel.waitFor(ClientChannel.CLOSED, 0);
+						channel.waitFor(Collections.singleton(ClientChannelEvent.CLOSED), 0);
 					} finally {
 						session.close(false);
 					}
