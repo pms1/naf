@@ -268,7 +268,6 @@ public class ApplicationBuilder {
 
 						@Override
 						public void close() throws NamingException {
-							throw new OperationNotSupportedException();
 
 						}
 
@@ -341,6 +340,9 @@ public class ApplicationBuilder {
 				// + "com.github.naf.jta.level=FINEST\r\n" //
 				// + ".level=FINEST\r\n" //
 				).getBytes()));
+
+				// DriverManager.setLogWriter(new PrintWriter(System.out));
+
 			} catch (SecurityException | IOException e1) {
 				throw new RuntimeException(e1);
 			}
