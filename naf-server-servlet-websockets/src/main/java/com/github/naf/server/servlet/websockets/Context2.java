@@ -9,11 +9,11 @@ import javax.enterprise.context.RequestScoped;
 import javax.websocket.Session;
 
 import org.jboss.weld.bootstrap.api.helpers.RegistrySingletonProvider;
-import org.jboss.weld.context.AbstractBoundContext;
-import org.jboss.weld.context.beanstore.AttributeBeanStore;
-import org.jboss.weld.context.beanstore.LockStore;
-import org.jboss.weld.context.beanstore.NamingScheme;
-import org.jboss.weld.context.beanstore.SimpleNamingScheme;
+import org.jboss.weld.contexts.AbstractBoundContext;
+import org.jboss.weld.contexts.beanstore.AttributeBeanStore;
+import org.jboss.weld.contexts.beanstore.LockStore;
+import org.jboss.weld.contexts.beanstore.NamingScheme;
+import org.jboss.weld.contexts.beanstore.SimpleNamingScheme;
 
 public class Context2 extends AbstractBoundContext<Session> {
 

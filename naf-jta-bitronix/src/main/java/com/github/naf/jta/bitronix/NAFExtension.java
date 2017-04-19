@@ -34,6 +34,8 @@ public class NAFExtension implements Extension {
 				result.setMaxPoolSize(f.maxPool);
 			if (f.allowLocalTransactions != null)
 				result.setAllowLocalTransactions(f.allowLocalTransactions);
+
+			result.setShareTransactionConnections(true);
 			result.getDriverProperties().putAll(f.properties);
 
 			return new Resource() {

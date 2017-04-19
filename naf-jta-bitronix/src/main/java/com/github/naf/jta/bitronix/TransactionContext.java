@@ -10,9 +10,9 @@ import javax.transaction.TransactionManager;
 import javax.transaction.TransactionScoped;
 
 import org.jboss.weld.bootstrap.api.helpers.RegistrySingletonProvider;
-import org.jboss.weld.context.AbstractContext;
-import org.jboss.weld.context.beanstore.BeanStore;
-import org.jboss.weld.context.beanstore.HashMapBeanStore;
+import org.jboss.weld.contexts.AbstractContext;
+import org.jboss.weld.contexts.beanstore.BeanStore;
+import org.jboss.weld.contexts.beanstore.HashMapBeanStore;
 
 import bitronix.tm.TransactionManagerServices;
 

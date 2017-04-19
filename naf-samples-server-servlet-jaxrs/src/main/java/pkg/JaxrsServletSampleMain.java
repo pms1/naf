@@ -12,7 +12,7 @@ import javax.enterprise.context.spi.Context;
 import javax.enterprise.inject.spi.BeanManager;
 
 import org.jboss.weld.bean.builtin.BeanManagerProxy;
-import org.jboss.weld.context.AbstractBoundContext;
+import org.jboss.weld.contexts.AbstractBoundContext;
 import org.jboss.weld.manager.BeanManagerImpl;
 
 import com.github.naf.Application;

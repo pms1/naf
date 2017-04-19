@@ -44,11 +44,11 @@ import org.apache.sshd.server.keyprovider.AbstractGeneratorHostKeyProvider;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.session.ServerSession;
 import org.jboss.weld.bootstrap.api.helpers.RegistrySingletonProvider;
-import org.jboss.weld.context.AbstractBoundContext;
-import org.jboss.weld.context.beanstore.MapBeanStore;
-import org.jboss.weld.context.beanstore.NamingScheme;
-import org.jboss.weld.context.beanstore.SimpleNamingScheme;
-import org.jboss.weld.context.cache.RequestScopedCache;
+import org.jboss.weld.contexts.AbstractBoundContext;
+import org.jboss.weld.contexts.beanstore.MapBeanStore;
+import org.jboss.weld.contexts.beanstore.NamingScheme;
+import org.jboss.weld.contexts.beanstore.SimpleNamingScheme;
+import org.jboss.weld.contexts.cache.RequestScopedCache;
 import org.jboss.weld.manager.api.WeldManager;
 
 import com.github.naf.server.ServerEndpointConfiguration;
